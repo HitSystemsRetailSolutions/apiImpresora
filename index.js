@@ -1,10 +1,9 @@
-
+const conexion = require('./conexion');
 var express = require('express');
 const fs = require('fs');
 const SQL = require('mssql');
 const { exec } = require('node:child_process');
 var app = express();
-let authKey = "1234";
 app.set("port", process.env.PORT || 4000);
 app.use(function (req, res, next) {
    res.header("Access-Control-Allow-Origin", "*");
@@ -12,117 +11,141 @@ app.use(function (req, res, next) {
    next();
 });
 
+	app.use(express.json());
+	app.use(express.urlencoded({ extended: true }))
+
 async function GetSQlRequest(request){
-	await SQL.connect('Server=i.web.nubehit.com,1433;Database=Hit;User Id=sa;Password=LOperas93786;Encrypt=false') //`select * from [Fac_CasaEmpanadas].[dbo].AppUsuaris`
+	await SQL.connect('Server=i.web.nubehit.com,1433;Database=Hit;User Id=sa;Password=LOperas93786;Encrypt=false')
 	return SQL.query(request)
 }
 
 app.get('/:printer', async function (req, res) {
+	process.stdout.write("*")
 	try{
 		res.writeHead(200, {'Content-Type': 'text/plain'});
 		let macAdress = (req.rawHeaders[21])
 		var response = "ERROR CON EL SERVIDOR, PORFAVOR CONTACTE CON HIT";
-		//response = await GetTextToPrint(macAdress)
-		let rest = `[bold: on]\
-[magnify: width 3; height 3]\
-Casa De Las Empanadas
-[negative: on]\
-8A720\
-[space: count 1]\
-Micronics
-[plain]\
-[align: center]
-[magnify: width 1; height 1]
-Etiquedado el Marzo 24 2021 1:30PM
-[upperline: on]
-[space: count 48]
-[plain]\
-[bold: on]
-[magnify: width 2; height 2]\
-ETIQUETADO
-[plain]\
-[underline: on]
-[space: count 48]
-[plain]
-[column: left 1XStar's lunch box A ÑÑÑÑÑ *; right $10.95; short lunch box A *]
-------------------------------------------------
-[column: left Subtotalalalal; right $0.97]
-[column: left Ammount paid; right $11.92]
-[column: left item 1; right 10.00€]
-------------------------------------------------
-[align: left]\
-*Use special source as you like!
-[cut: feed; partial]
-[barcode: type qr; data 123456789012; error-correction Q; cell 1mm; model 2]
-`;
-
-		let filenameGet = './files/tempFileGet'+Math.floor(Math.random() * 9999)+'.stm';
-		let filenameOut = './files/tempFileOut'+Math.floor(Math.random() * 9999)+'.bin';
-		await fs.writeFile(filenameGet, rest, function (err) {});
-		await exec( `"./cputil/cputil" utf8 thermal3 decode application/vnd.star.line ./${filenameGet} ./${filenameOut}`);
-		while (fs.existsSync(filenameOut) == false){
-			await new Promise(resolve => setTimeout(resolve, 500));
-		}
-		console.log(fs.existsSync(filenameOut))
-		fs.readFile(filenameOut, 'utf8', (err, data) => {
-		  if (err) {
-			res.end(err);
-		  }
-		  console.log(data)
-		  res.end(data);
+		let Sql=``
+		Sql+=`DECLARE @MyMac nvarchar(20); `
+		Sql+=`DECLARE @ImpresoraNom nvarchar(20); `
+		Sql+=`DECLARE @Empresa nvarchar(20); `
+		Sql+=`DECLARE @Sql nvarchar(2000); `
+		Sql+=`Set @MyMac = '${macAdress}'; `
+		Sql+=`select  @ImpresoraNom = nom,@Empresa = empresa  from ImpresorasIp where Mac = @MyMac `
+		Sql+=`set @Sql=       'DECLARE @I nvarchar(2000);' `
+		Sql+=`set @Sql=@Sql + 'DECLARE @T nvarchar(2000);' `
+		Sql+=`set @Sql=@Sql + 'SELECT top 1 @T= texte, @I=id FROM ' + @Empresa + '.[dbo].[ImpresoraCola] where Impresora=' +CHAR(39)+ @ImpresoraNom + CHAR(39) + ' order by tmstpeticio '; `
+		Sql+=`set @Sql=@Sql + 'delete ' + @Empresa + '.[dbo].[ImpresoraCola] Where id=@I ' ; `
+		Sql+=`set @Sql=@Sql + 'Select @T ;' `
+		Sql+=`EXEC  sp_executesql  @Sql`
+		conexion.recHit("Hit", Sql).then(data => {
+			let filenameGet = './files/tempFileGet'+Math.floor(Math.random() * 9999)+'.stm';
+			let filenameOut = './files/tempFileOut'+Math.floor(Math.random() * 9999)+'.bin';
+	   		fs.writeFile(filenameGet, data.recordset[0][''], function (err) {
+				if (err) reject(err);
+      	      else {
+					  exec( `"./cputil/cputil" utf8 thermal3 decode application/vnd.star.line ./${filenameGet} ./${filenameOut}`, (error, stdout, stderr) => {
+							if (error) {
+								console.warn(error);
+								}
+							else{
+								fs.readFile(filenameOut, 'utf8', (err, data) => {
+									if (err) {
+										res.end(err);
+									}
+									fs.unlink(filenameGet,function(err){});  
+									fs.unlink(filenameOut,function(err){}); 
+									res.end(data);
+								});
+							}
+						});
+				}
+			});
 		});
-		fs.unlink(filenameGet,function(err){});  
-		fs.unlink(filenameOut,function(err){});  
-			}catch(err){
-				res.end("Error >> "+err);
-			} 
-		})
-
-
-app.post('/:printer', async function (req, res) {
-	try{
-		res.writeHead(200, {'Content-Type': 'application/vnd.star.line'});
-		let macAdress = (req.rawHeaders[11])
-		var response = { "jobReady": await GetWaitingPrints(macAdress),"mediaTypes": ["text/plain"]};
-		console.log(response);
-		res.end(JSON.stringify(response));
 	}catch{
 		res.end("Error");
 	}
 })
 
+app.post('/:printer', async function (req, res) {
+	process.stdout.write(".")
+	try{
+		let macAdress = (req.rawHeaders[11])
+		let status = req.body['status']
+	
+//process.stdout.write(macAdress)
+		let Sql=``
+		Sql+=`DECLARE @MyMac nvarchar(20); `
+		Sql+=`DECLARE @ImpresoraNom nvarchar(20); `
+		Sql+=`DECLARE @Empresa nvarchar(20); `
+		Sql+=`declare @ImpresoraCodi nvarchar(20); `
+		Sql+=`DECLARE @Sql nvarchar(2000); `
+		Sql+=`Declare @BotoApretat BIT; `
+		Sql+=`Set @MyMac = '${macAdress}'; `
+		if(status.substring(5, 6) == "4") {Sql+=`Set @BotoApretat = 1; `}
+		else {Sql+=`Set @BotoApretat = 0;`}
+		Sql+=`select  @ImpresoraNom = nom,@Empresa = empresa  from ImpresorasIp where Mac = @MyMac `
+		Sql+=`update ImpresorasIp set TmSt=getdate()  where Mac = @MyMac `
+		Sql+=`if ( @BotoApretat = 1)  `
+		Sql+=`begin  `
+		Sql+=`	if ( @Empresa = 'Hit')  `
+		Sql+=`	begin `
+		Sql+=`		delete [Hit].[dbo].[ImpresoraCola] Where Impresora = @ImpresoraNom `
+		Sql+=`		insert into [Hit].[dbo].[ImpresoraCola] (id,impresora,Texte,TmStPeticio) values (newid(),@ImpresoraNom, 'Impresora NO Configurada.[\]Truqueu al 937161010[\]Codi Impresora :[\][magnify: width 2; height 2][\]' +CHAR(39)+ @ImpresoraNom + CHAR(39)+ '[\][magnify: width 1; height 1][\]Gracies :)[\]',getdate()) `
+		Sql+=`	end `
+		Sql+=`	else `
+		Sql+=`	begin `
+		Sql+=`		set @Sql = 'declare @click numeric;' `
+		Sql+=`		set @Sql = @Sql + 'declare @click2 numeric;' `
+		Sql+=`		set @Sql = @Sql + 'declare @imp numeric;' `
+		Sql+=`		set @Sql = @Sql + 'select @click=SUM(Alb) ,@click2=SUM(Prod) ,@imp=SUM(Imp)  from ( ' `
+		Sql+=`		set @Sql = @Sql + 'select COUNT(*) Alb,0 Prod ,0 Imp from [' +@Empresa + '].[dbo].FeinesAFer where tipus = ' +CHAR(39)+ 'ImpresoraIpReposicion' +CHAR(39)+ ' and param1=' +CHAR(39)+ @ImpresoraNom + CHAR(39)+ ' union ' `
+		Sql+=`		set @Sql = @Sql + 'select 0 Alb,COUNT(*) Prod ,0 Imp from [' +@Empresa + '].[dbo].FeinesAFer where tipus = ' +CHAR(39)+ 'ImpresoraPremutBoto2' +CHAR(39)+ ' and param1=' +CHAR(39)+ @ImpresoraNom + CHAR(39)+ '  Union ' `
+		Sql+=`		set @Sql = @Sql + 'select 0 Alb,0 Prod,COUNT(*)  Imp From [' +@Empresa + '].[dbo].ImpresoraCola where Impresora = ' +CHAR(39)+ @ImpresoraNom + CHAR(39)+ ') s ;' `
+		Sql+=`		set @Sql = @Sql + '	    Select @imp,@click,@click2 ' `
+		Sql+=`		set @Sql = @Sql + 'if (@imp > 0 or @click2>0)'  `
+		Sql+=`		set @Sql = @Sql + '	begin ' `
+		Sql+=`		set @Sql = @Sql + '		Delete [' +@Empresa + '].[dbo].[ImpresoraCola] where impresora = ' +CHAR(39)+ @ImpresoraNom + CHAR(39)+ ' ' `
+		Sql+=`		set @Sql = @Sql + '		Delete [' +@Empresa + '].[dbo].FeinesAFer Where (tipus = ' +CHAR(39)+ 'ImpresoraIpReposicion' +CHAR(39)+ ' or tipus = ' +CHAR(39)+ 'ImpresoraPremutBoto2' +CHAR(39)+ ') and param1=' +CHAR(39)+ @ImpresoraNom + CHAR(39)+ ' ' `
+		Sql+=`		set @Sql = @Sql + '		insert into [' +@Empresa + '].[dbo].[ImpresoraCola] (id,impresora,Texte,TmStPeticio) values (newid(),' +CHAR(39)+ @ImpresoraNom + CHAR(39)+ ', ' +CHAR(39)+ '[magnify: width 2; height 2]Impresio CANCELADA !!![magnify: width 1; height 1]' +CHAR(39)+ ',getdate()) ' `
+		Sql+=`		set @Sql = @Sql + '	end ' `
+		Sql+=`		set @Sql = @Sql + 'else '	 `		
+		Sql+=`		set @Sql = @Sql + 'if (@click > 0)'  `
+		Sql+=`		set @Sql = @Sql + '	begin ' `
+		Sql+=`		set @Sql = @Sql + '		Delete [' +@Empresa + '].[dbo].FeinesAFer where Tipus = ' +CHAR(39)+ 'ImpresoraIpReposicion' +CHAR(39)+ ' and Param1 = ' +CHAR(39)+ @ImpresoraNom + CHAR(39)+' ' `
+		Sql+=`		set @Sql = @Sql + '		Insert Into [' +@Empresa + '].[dbo].FeinesAFer (id, Tipus,Ciclica,Param1) Values (newid(), ' +CHAR(39)+ 'ImpresoraPremutBoto2' +CHAR(39)+ ',0,' +CHAR(39)+ @ImpresoraNom + CHAR(39)+')' `
+		Sql+=`		set @Sql = @Sql + '		insert into [' +@Empresa + '].[dbo].[ImpresoraCola] (id,impresora,Texte,TmStPeticio) values (newid(),' +CHAR(39)+ @ImpresoraNom + CHAR(39)+ ', ' +CHAR(39)+ '[magnify: width 2; height 2]Segon Llistat Demanat. Si tornes a pulsar es cancela la impressio[magnify: width 1; height 1]' +CHAR(39)+ ',getdate())' `
+		Sql+=`		set @Sql = @Sql + '	end ' `
+		Sql+=`		set @Sql = @Sql + 'else '		 `	
+		Sql+=`		set @Sql = @Sql + '	begin ' `
+		Sql+=`		set @Sql = @Sql + '		Insert Into [' +@Empresa + '].[dbo].FeinesAFer (id, Tipus,Ciclica,Param1) Values (newid(), ' +CHAR(39)+ 'ImpresoraIpReposicion' +CHAR(39)+ ',0,' +CHAR(39)+ @ImpresoraNom + CHAR(39)+')' `
+		Sql+=`		set @Sql = @Sql + '		insert into [' +@Empresa + '].[dbo].[ImpresoraCola] (id,impresora,Texte,TmStPeticio) values (newid(),' +CHAR(39)+ @ImpresoraNom + CHAR(39)+ ', ' +CHAR(39)+ '[magnify: width 2; height 2]Peticio Reposicio Feta.....[magnify: width 1; height 1]' +CHAR(39)+ ',getdate())' `
+		Sql+=`		set @Sql = @Sql + '	end ' `
+		Sql+=` `
+		Sql+=`		EXEC  sp_executesql  @Sql `
+		Sql+=`	end `
+		Sql+=`end `
+		Sql+=`set @Sql='select count(*) Q from ' + @Empresa + '.[dbo].[ImpresoraCola] where Impresora=' +CHAR(39)+ @ImpresoraNom + CHAR(39);`
+		Sql+=`EXEC  sp_executesql  @Sql`
 
-async function GetTextToPrint(macAdress){
-	let data = await GetSQlRequest(`select Empresa,Nom from [Hit].[dbo].ImpresorasIp where Mac = '${macAdress}'`)
-	let empresa = data.recordset[0]['Empresa']
-	let nom = data.recordset[0]['Nom']
-	let result = await GetSQlRequest(`SELECT top 1 texte,id FROM [${empresa}].[dbo].ImpresoraCola Where Impresora = '${nom}'`);
-	//await GetSQlRequest(`delete FROM [${empresa}].[dbo].ImpresoraCola Where id = '${result.recordset[0]['id']}'`); // elimina
-	if (result.rowsAffected
-	<= 0){
-		return "ERROR CON EL SERVIDOR, PORFAVOR CONTACTE CON HIT";
-	}else{
-		console.log("Impresi� realitzada a: "+empresa)
-		return result.recordset[0]['texte']
+		conexion.recHit("Hit", Sql).then(data => {
+			res.writeHead(200, {'Content-Type': 'text/plain'});
+			
+			if(data.recordset[0]['Q']>0)
+				res.end(JSON.stringify({ "jobReady": true,"mediaTypes": ["text/plain"]}));
+			else
+				res.end(JSON.stringify({ "jobReady": false,"mediaTypes": ["text/plain"]}));
+			
+		})
+	}catch{
+		res.end("Error");
 	}
-}
-
-async function GetWaitingPrints(macAdress){
-	let data = await GetSQlRequest(`select Empresa,Nom from [Hit].[dbo].ImpresorasIp where Mac = '${macAdress}'`)
-	let empresa = data.recordset[0]['Empresa']
-	let nom = data.recordset[0]['Nom']
-	let result = await GetSQlRequest(`SELECT top 1 texte,id FROM [${empresa}].[dbo].ImpresoraCola Where Impresora = '${nom}'`);
-	if (result.rowsAffected
-	<= 0){
-		return false
-	}else{
-		return true
-	}
-}
+})
 
 var server = app.listen(app.get("port"), function () {
 
-  var host = "54.228.161.159"
+  var host = "http://santaana2.nubehit.com"
+   host = "54.228.161.159"
   var port = server.address().port
 
   console.log("API app listening at http://%s:%s", host, port)
