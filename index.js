@@ -1,7 +1,7 @@
 const conexion = require('./conexion');
+
 var express = require('express');
 const fs = require('fs');
-const SQL = require('mssql');
 const { exec } = require('node:child_process');
 var app = express();
 app.set("port", process.env.PORT || 4000);
@@ -14,10 +14,6 @@ app.use(function (req, res, next) {
 	app.use(express.json());
 	app.use(express.urlencoded({ extended: true }))
 
-async function GetSQlRequest(request){
-	await SQL.connect('Server=i.web.nubehit.com,1433;Database=Hit;User Id=sa;Password=LOperas93786;Encrypt=false')
-	return SQL.query(request)
-}
 
 app.get('/:printer', async function (req, res) {
 	process.stdout.write("*")
@@ -41,7 +37,8 @@ app.get('/:printer', async function (req, res) {
 		conexion.recHit("Hit", Sql).then(data => {
 			let filenameGet = './files/tempFileGet'+Math.floor(Math.random() * 9999)+'.stm';
 			let filenameOut = './files/tempFileOut'+Math.floor(Math.random() * 9999)+'.bin';
-	   		fs.writeFile(filenameGet, data.recordset[0][''], function (err) {
+			if(data.recordset == undefined)return res.end("Error");
+			fs.writeFile(filenameGet, data.recordset[0][''], function (err) {
 				if (err) console.log("1",err);
       	      else { 
 					  exec( `"./cputil/cputil" utf8 thermal3 decode application/vnd.star.line ./${filenameGet} ./${filenameOut}`, (error, stdout, stderr) => {
@@ -139,7 +136,7 @@ app.post('/:printer', async function (req, res) {
 			else
 				res.end(JSON.stringify({ "jobReady": false,"mediaTypes": ["text/plain"]}));
 			
-		})
+		}).catch(err => {res.end("Error");} )
 	}catch{
 		res.end("Error");
 	}
