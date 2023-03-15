@@ -42,17 +42,20 @@ app.get('/:printer', async function (req, res) {
 			let filenameGet = './files/tempFileGet'+Math.floor(Math.random() * 9999)+'.stm';
 			let filenameOut = './files/tempFileOut'+Math.floor(Math.random() * 9999)+'.bin';
 	   		fs.writeFile(filenameGet, data.recordset[0][''], function (err) {
-				if (err) reject(err);
-      	      else {
+				if (err) console.log("1",err);
+      	      else { 
 					  exec( `"./cputil/cputil" utf8 thermal3 decode application/vnd.star.line ./${filenameGet} ./${filenameOut}`, (error, stdout, stderr) => {
 							if (error) {
-								console.warn(error);
+								console.warn("Exec",error);
 								}
 							else{
 								fs.readFile(filenameOut, 'utf8', (err, data) => {
 									if (err) {
-										res.end(err);
+										res.end("read" ,filenameOut,err);
 									}
+									
+									fs.writeFile('./files/Codis.bin', JSON.stringify(data) , function (err) {});
+
 									fs.unlink(filenameGet,function(err){});  
 									fs.unlink(filenameOut,function(err){}); 
 									res.end(data);
