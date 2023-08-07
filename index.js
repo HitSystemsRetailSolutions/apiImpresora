@@ -5,7 +5,7 @@ const fs = require("fs");
 const { exec } = require("node:child_process");
 var app = express();
 var procesedMacs = [];
-app.set("port", process.env.PORT || 4000);
+app.set("port", process.env.PORT || 4040);
 app.use(function (req, res, next) {
   res.header("Access-Control-Allow-Origin", "*");
   res.header(
