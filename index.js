@@ -32,8 +32,8 @@ app.get("/:printer", async function (req, res) {
     Sql += `DECLARE @Sql nvarchar(2000); `;
     Sql += `Set @MyMac = '${macAdress}'; `;
     Sql += `select  @ImpresoraNom = nom,@Empresa = empresa  from ImpresorasIp where Mac = @MyMac `;
-    Sql += `set @Sql=       'DECLARE @I nvarchar(2000);' `;
-    Sql += `set @Sql=@Sql + 'DECLARE @T nvarchar(2000);' `;
+    Sql += `set @Sql=       'DECLARE @I varchar(max);' `;
+    Sql += `set @Sql=@Sql + 'DECLARE @T varchar(max);' `;
     Sql += `set @Sql=@Sql + 'SELECT top 1 @T= texte, @I=id FROM ' + @Empresa + '.[dbo].[ImpresoraCola] where Impresora=' +CHAR(39)+ @ImpresoraNom + CHAR(39) + ' order by tmstpeticio '; `;
     Sql += `set @Sql=@Sql + 'delete ' + @Empresa + '.[dbo].[ImpresoraCola] Where id=@I ' ; `;
     Sql += `set @Sql=@Sql + 'Select @T ;' `;
@@ -48,7 +48,7 @@ app.get("/:printer", async function (req, res) {
         if (err) console.log("1", err);
         else {
           exec(
-            `"./cputil/cputil" utf8 thermal3 decode application/vnd.star.line ./${filenameGet} ./${filenameOut}`,
+            `"./cputil/cputil" utf8 thermal3 scale-to-fit decode application/vnd.star.line ./${filenameGet} ./${filenameOut}`,
             (error, stdout, stderr) => {
               if (error) {
                 console.warn("Exec", error);
