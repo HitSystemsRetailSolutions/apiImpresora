@@ -1,4 +1,5 @@
 const conexion = require("./conexion");
+const moment = require("moment");
 //http://santaana2.nubehit.com:4040/printer
 var express = require("express");
 const fs = require("fs");
@@ -14,10 +15,30 @@ app.use(function (req, res, next) {
   );
   next();
 });
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
+app.delete("/:printer", async function (req, res) {
+  let macAdress = req.rawHeaders[21];
+  let empresaSQL = `Set @MyMac = '${macAdress}'; `;
+  //La fecha es [Servit-YY-MM-DD]
+  let servitDate = `[Servit-${moment().format("YY-MM-DD")}]`;
+  empresaSQL += `select  nom,empresa  from ImpresorasIp where Mac = @MyMac `;
+  recHit("Hit", empresaSQL)
+    .then((empresa) => {
+      recHit(
+        "Hit",
+        `update ${servitDate} Set Hora= datepart(hour,getdate()), comentari=comentari+'[IMP ' + convert(nvarchar, getdate(), 8) + ']' Where  client = '${
+          empresa[0].nom.split("_")[1]
+        }' and Hora = 1 `
+      ).then((x) => {});
+    })
+    .catch((err) => {
+      res.end("Error");
+    });
+  let SQL = ``;
+  // recHit("WEB", $empresa,"update [Servit-".date("y-m-d")."] Set Hora= datepart(hour,getdate()), comentari=comentari+'[IMP ' + convert(nvarchar, getdate(), 8) + ']' Where  client = '".$cmCodiBotiga."' and Hora = 1 ", 1);
+  JSON.stringify({ jobReady: false, mediaTypes: ["text/plain"] });
+});
 app.get("/:printer", async function (req, res) {
   console.log("paso2");
   process.stdout.write("*");
