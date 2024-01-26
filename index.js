@@ -4,6 +4,7 @@ const moment = require("moment");
 var express = require("express");
 const fs = require("fs");
 const { exec } = require("node:child_process");
+const { Binary } = require("mssql");
 var app = express();
 var procesedMacs = [];
 app.set("port", process.env.PORT || 4040);
@@ -15,22 +16,37 @@ app.use(function (req, res, next) {
   );
   next();
 });
+function binaryAgent(str) {
+  return str
+    .split(" ")
+    .map(function (elem) {
+      return String.fromCharCode(parseInt(elem, 2));
+    })
+    .join("");
+}
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.delete("/:printer", async function (req, res) {
-  let macAdress = req.rawHeaders[21];
-  let empresaSQL = `Set @MyMac = '${macAdress}'; `;
-  //La fecha es [Servit-YY-MM-DD]
+  let macAdress = req.rawHeaders[11];
+  console.log(macAdress, "si");
   let servitDate = `[Servit-${moment().format("YY-MM-DD")}]`;
-  empresaSQL += `select  nom,empresa  from ImpresorasIp where Mac = @MyMac `;
-  recHit("Hit", empresaSQL)
+  let empresaSQL = `select  nom,empresa  from ImpresorasIp where Mac = '${macAdress}' `;
+  conexion
+    .recHit("Hit", empresaSQL)
     .then((empresa) => {
-      recHit(
-        "Hit",
-        `update ${servitDate} Set Hora= datepart(hour,getdate()), comentari=comentari+'[IMP ' + convert(nvarchar, getdate(), 8) + ']' Where  client = '${
-          empresa[0].nom.split("_")[1]
-        }' and Hora = 1 `
-      ).then((x) => {});
+      conexion
+        .recHit(
+          empresa.recordset[0].empresa,
+          `update ${servitDate} Set Hora= ${moment().hour()}, comentari='${
+            "IMP " + moment().format("hh:mm:ss")
+          }' Where  client = '${
+            empresa.recordset[0].nom.split("_")[1]
+          }' and Hora = 1`
+        )
+        .then((x) => {
+          console.log("pasu3");
+          res.end("none");
+        });
     })
     .catch((err) => {
       res.end("Error");
@@ -40,7 +56,6 @@ app.delete("/:printer", async function (req, res) {
   JSON.stringify({ jobReady: false, mediaTypes: ["text/plain"] });
 });
 app.get("/:printer", async function (req, res) {
-  console.log("paso2");
   process.stdout.write("*");
   try {
     res.writeHead(200, { "Content-Type": "text/plain" });
@@ -65,7 +80,41 @@ app.get("/:printer", async function (req, res) {
       let filenameOut =
         "./files/tempFileOut" + Math.floor(Math.random() * 9999) + ".bin";
       if (data.recordset == undefined) return res.end("Error");
-      fs.writeFile(filenameGet, data.recordset[0][""], function (err) {
+      //console log del codigo ascii de la posicion 27 105 1 1
+      let firtsPos = 0;
+      let positions = [];
+      let msg = data.recordset[0][""];
+      /*msg = "";
+      if (data.recordset[0][""] == null) return res.end("Error");
+      console.log(data.recordset[0][""]);
+      for (let i = 0; i < data.recordset[0][""].length; i++) {
+        let k = data.recordset[0][""].charCodeAt(i);
+        if ([27, 105, 1, 1].includes(k)) {
+          if (k == 27) {
+            firtsPos = i;
+            positions.push(i);
+          }
+          if (k == 105 && i - 1 == firtsPos) {
+            positions.push(i);
+          }
+          if (k == 1 && i - 1 == positions[1]) {
+            positions.push(i);
+          }
+          if (k == 1 && i - 1 == positions[2]) {
+            positions.push(i);
+            msg = [
+              msg.slice(0, positions[3]),
+              "HOLAAA",
+              msg.slice(positions[3]),
+            ].join("");
+            //  msg[firtsPos] = "HOLA";
+            // msg.slice(positions[1], positions[3]);
+            firtsPos = 0;
+            positions = [];
+          }
+        }
+      }*/
+      fs.writeFile(filenameGet, msg, function (err) {
         if (err) console.log("1", err);
         else {
           exec(
