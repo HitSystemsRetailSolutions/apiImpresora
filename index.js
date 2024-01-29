@@ -37,14 +37,14 @@ app.delete("/:printer", async function (req, res) {
       conexion
         .recHit(
           empresa.recordset[0].empresa,
-          `update ${servitDate} Set Hora= ${moment().hour()}, comentari='${
+          `update ${servitDate} Set Hora= ${moment().hour()}, comentari='Reposicion[${
             "IMP " + moment().format("hh:mm:ss")
-          }' Where  client = '${
+          }]' Where  client = '${
             empresa.recordset[0].nom.split("_")[1]
           }' and Hora = 1`
         )
         .then((x) => {
-          console.log("pasu3");
+          console.log("pasu3", x);
           res.end("none");
         });
     })
