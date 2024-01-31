@@ -24,11 +24,55 @@ function binaryAgent(str) {
     })
     .join("");
 }
+
+function processOldCodes(msg) {
+  //console log del codigo ascii de la posicion 27 105 1 1
+  let firtsPos = 0;
+  let positions = [];
+  let lines = msg.toString().split("\r");
+  for (let x = 0; x < lines.length; x++) {
+    for (let i = 0; i < lines[x].length; i++) {
+      let k = lines[x].charCodeAt(i);
+      if ([27, 105, 1, 1].includes(k)) {
+        if (k == 27) {
+          firtsPos = i;
+          positions.push(i);
+        }
+        if (k == 105 && i - 1 == firtsPos) {
+          positions.push(i);
+        }
+        if (k == 1 && i - 2 == firtsPos) {
+          positions.push(i);
+        }
+        if (k == 1 && i - 3 == firtsPos) {
+          positions.push(i);
+          // get position of \n
+          // replace the characters in positions with bold tags on and off with the string jumped the \n
+          lines[x] = [
+            lines[x].slice(0, positions[0]),
+            "[bold:on]",
+            lines[x].slice(positions[positions.length - 1]),
+          ].join("");
+          lines[x] += "[bold:off]";
+          //  msg[firtsPos] = "HOLA";
+          // msg.slice(positions[1], positions[3]);
+          firtsPos = 0;
+          positions = [];
+        }
+      }
+    }
+  }
+  msg = lines.join("\r");
+  msg = msg.split("{BR}").join("\n");
+  msg = msg.split("{FONT:B01}").join("[bold:on]");
+  msg = msg.split("{FONT:B00}").join("[bold:off]");
+
+  return msg;
+}
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.delete("/:printer", async function (req, res) {
   let macAdress = req.rawHeaders[11];
-  console.log(macAdress, "si");
   let servitDate = `[Servit-${moment().format("YY-MM-DD")}]`;
   let empresaSQL = `select  nom,empresa  from ImpresorasIp where Mac = '${macAdress}' `;
   conexion
@@ -44,7 +88,6 @@ app.delete("/:printer", async function (req, res) {
           }' and Hora = 1`
         )
         .then((x) => {
-          console.log("pasu3", x);
           res.end("none");
         });
     })
@@ -80,40 +123,8 @@ app.get("/:printer", async function (req, res) {
       let filenameOut =
         "./files/tempFileOut" + Math.floor(Math.random() * 9999) + ".bin";
       if (data.recordset == undefined) return res.end("Error");
-      //console log del codigo ascii de la posicion 27 105 1 1
-      let firtsPos = 0;
-      let positions = [];
-      let msg = data.recordset[0][""];
-      /*msg = "";
       if (data.recordset[0][""] == null) return res.end("Error");
-      console.log(data.recordset[0][""]);
-      for (let i = 0; i < data.recordset[0][""].length; i++) {
-        let k = data.recordset[0][""].charCodeAt(i);
-        if ([27, 105, 1, 1].includes(k)) {
-          if (k == 27) {
-            firtsPos = i;
-            positions.push(i);
-          }
-          if (k == 105 && i - 1 == firtsPos) {
-            positions.push(i);
-          }
-          if (k == 1 && i - 1 == positions[1]) {
-            positions.push(i);
-          }
-          if (k == 1 && i - 1 == positions[2]) {
-            positions.push(i);
-            msg = [
-              msg.slice(0, positions[3]),
-              "HOLAAA",
-              msg.slice(positions[3]),
-            ].join("");
-            //  msg[firtsPos] = "HOLA";
-            // msg.slice(positions[1], positions[3]);
-            firtsPos = 0;
-            positions = [];
-          }
-        }
-      }*/
+      let msg = processOldCodes(data.recordset[0][""]);
       fs.writeFile(filenameGet, msg, function (err) {
         if (err) console.log("1", err);
         else {
