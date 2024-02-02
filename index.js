@@ -54,8 +54,6 @@ function processOldCodes(msg) {
             lines[x].slice(positions[positions.length - 1]),
           ].join("");
           lines[x] += "[bold:off]";
-          //  msg[firtsPos] = "HOLA";
-          // msg.slice(positions[1], positions[3]);
           firtsPos = 0;
           positions = [];
         }
@@ -78,6 +76,11 @@ app.delete("/:printer", async function (req, res) {
   conexion
     .recHit("Hit", empresaSQL)
     .then((empresa) => {
+      if (
+        !empresa.recordset[0].nom.includes("Tienda") ||
+        !empresa.recordset[0].nom.includes("Tot")
+      )
+        return;
       conexion
         .recHit(
           empresa.recordset[0].empresa,
@@ -123,7 +126,6 @@ app.get("/:printer", async function (req, res) {
       let filenameOut =
         "./files/tempFileOut" + Math.floor(Math.random() * 9999) + ".bin";
       if (data.recordset == undefined) return res.end("Error");
-      if (data.recordset[0][""] == null) return res.end("Error");
       let msg = processOldCodes(data.recordset[0][""]);
       fs.writeFile(filenameGet, msg, function (err) {
         if (err) console.log("1", err);
