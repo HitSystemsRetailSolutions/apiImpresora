@@ -79,8 +79,10 @@ app.delete("/:printer", async function (req, res) {
       if (
         !empresa.recordset[0].nom.includes("Tienda") ||
         !empresa.recordset[0].nom.includes("Tot")
-      )
+      ) {
+        res.end("none");
         return;
+      }
       conexion
         .recHit(
           empresa.recordset[0].empresa,
