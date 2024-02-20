@@ -440,7 +440,7 @@ app.delete("/printer", async function (req, res) {
 
 var server = app.listen(app.get("port"), function () {
   var host = "http://santaana2.nubehit.com";
-  host = "54.77.231.164";
+  //host = "54.77.231.164";
   //host = "192.168.1.148";
   var port = server.address().port;
 
