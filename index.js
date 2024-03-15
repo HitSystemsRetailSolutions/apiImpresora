@@ -1,4 +1,5 @@
 const conexion = require("./conexion");
+require('dotenv').config();
 const moment = require("moment");
 var express = require("express");
 const fs = require("fs");
