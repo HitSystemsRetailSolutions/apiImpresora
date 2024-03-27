@@ -20,7 +20,7 @@ const client = mqtt.connect(mqttOptions);
 
 var app = express();
 var procesedMacs = [];
-app.set("port", process.env.PORT || 443);
+app.set("port", process.env.PORT || 4040);
 app.use(function (req, res, next) {
   res.header("Access-Control-Allow-Origin", "*");
   res.header(
@@ -442,11 +442,15 @@ app.delete("/printer", async function (req, res) {
 });
 
 var server = app.listen(app.get("port"), function () {
-  var host = "https://impresoras.nubehit.com";
+  //var host = "https://impresoras.nubehit.com";
   //host = "54.77.231.164";
   //host = "192.168.1.148";
+  var host = "localhost";
   var port = server.address().port;
 
   console.log("API app listening at http://%s:%s", host, port);
 });
 
+app.get("/", function (req, res) {
+  res.status(200).send("¡Hola!");
+});
