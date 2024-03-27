@@ -243,7 +243,8 @@ app.post("/printer", async function (req, res) {
   process.stdout.write(".");
   console.log('get message 2')
   try {
-    let macAddress = req.rawHeaders[11];
+    let macAddress = req.body.printerMAC;
+    console.log('macAddress', macAddress);
     let status = req.body["status"];
     if (!procesedMacs.includes(macAddress))
       conexion
@@ -350,7 +351,8 @@ app.get("/printer", async function (req, res) {
   console.log('get message', req)
   try {
     res.writeHead(200, { "Content-Type": "text/plain" });
-    let macAddress = req.rawHeaders[21];
+    let macAddress = req.query.mac;
+    console.log('macAddress', macAddress);
     var response = "ERROR CON EL SERVIDOR, PORFAVOR CONTACTE CON HIT";
     let Sql = ``;
     Sql += `DECLARE @MyMac nvarchar(20); `;
