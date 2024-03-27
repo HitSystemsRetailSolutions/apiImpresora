@@ -243,10 +243,10 @@ function botonIncrementar(macAddress) {
 
 app.post("/printer", async function (req, res) {
   process.stdout.write(".");
-  console.log('get message 2')
+  //console.log('get message 2')
   try {
     let macAddress = req.body.printerMAC;
-    console.log('macAddress', macAddress);
+    //console.log('macAddress', macAddress);
     let status = req.body["status"];
     if (!procesedMacs.includes(macAddress))
       conexion
@@ -350,11 +350,11 @@ app.post("/printer", async function (req, res) {
 
 app.get("/printer", async function (req, res) {
   process.stdout.write("*");
-  console.log('get message', req)
+  //console.log('get message', req)
   try {
     res.writeHead(200, { "Content-Type": "text/plain" });
     let macAddress = req.query.mac;
-    console.log('macAddress', macAddress);
+    //console.log('macAddress', macAddress);
     var response = "ERROR CON EL SERVIDOR, PORFAVOR CONTACTE CON HIT";
     let Sql = ``;
     Sql += `DECLARE @MyMac nvarchar(20); `;
@@ -412,7 +412,7 @@ app.get("/printer", async function (req, res) {
 });
 
 app.delete("/printer", async function (req, res) {
-  console.log('get message 3')
+  //console.log('get message 3')
   let macAddress = req.rawHeaders[11];
   let servitDate = `[Servit-${moment().format("YY-MM-DD")}]`;
   let empresaSQL = `select  nom,empresa  from ImpresorasIp where Mac = '${macAddress}' `;
