@@ -2,6 +2,7 @@ const conexion = require("./conexion");
 require('dotenv').config();
 const moment = require("moment");
 var express = require("express");
+const path = require("path");
 const fs = require("fs");
 const { exec } = require("node:child_process");
 const { Binary } = require("mssql");
@@ -82,6 +83,7 @@ function processOldCodes(msg) {
 }
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, "public")));
 
 //MQTT
 
@@ -454,5 +456,5 @@ var server = app.listen(app.get("port"), function () {
 });
 
 app.get("/", function (req, res) {
-  res.status(200).send("¡Hola!");
+  res.status(200).sendFile(path.join(__dirname, "public", "index.html"));
 });
