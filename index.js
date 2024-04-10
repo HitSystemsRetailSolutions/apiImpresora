@@ -413,7 +413,7 @@ app.get("/printer", async function (req, res) {
 
 app.delete("/printer", async function (req, res) {
   //console.log('get message 3')
-  let macAddress = req.rawHeaders[11];
+  let macAddress = req.query.mac;
   let servitDate = `[Servit-${moment().format("YY-MM-DD")}]`;
   let empresaSQL = `select  nom,empresa  from ImpresorasIp where Mac = '${macAddress}' `;
   conexion
