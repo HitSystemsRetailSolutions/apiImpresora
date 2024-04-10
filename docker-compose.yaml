@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  impresora:
+    container_name: apiImpresora
+    build: .
+    environment:
+      TZ: Europe/Madrid
+    ports:
+     - 4040:4040
+    volumes:
+     - ./cputil:/usr/src/cputil
+    restart: unless-stopped

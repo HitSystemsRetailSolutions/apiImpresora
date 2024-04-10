@@ -1,7 +1,8 @@
 const conexion = require("./conexion");
+require('dotenv').config();
 const moment = require("moment");
-//http://santaana2.nubehit.com:4040/printer
 var express = require("express");
+const path = require("path");
 const fs = require("fs");
 const { exec } = require("node:child_process");
 const { Binary } = require("mssql");
@@ -9,9 +10,14 @@ const debug = true;
 const mqtt = require('mqtt');
 const momentTimeZone = require('moment-timezone');
 const { rsvgVersion } = require("canvas");
-const mqttBrokerUrl = 'mqtt://santaana2.nubehit.com';
+const mqttOptions = {
+  host: process.env.MQTT_HOST,
+  username: process.env.MQTT_USER,
+  password: process.env.MQTT_PASSWORD,
+};
+
 // Crear un cliente MQTT
-const client = mqtt.connect(mqttBrokerUrl);
+const client = mqtt.connect(mqttOptions);
 
 var app = express();
 var procesedMacs = [];
@@ -77,6 +83,7 @@ function processOldCodes(msg) {
 }
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, "public")));
 
 //MQTT
 
@@ -89,67 +96,67 @@ app.get("/test", async function (req, res) {
 
 client.on('connect', function () {
   console.log('Conectado al broker MQTT');
-  
+
   // Suscribirse a un tema
   const tema = '/Hit/Serveis/Contable/Impresora';
   client.subscribe(tema, function (err) {
-      if (err) {
-          console.error('Error al suscribirse al tema', err);
-      } else {
-          console.log('Suscripción exitosa al tema', tema);
-      }
+    if (err) {
+      console.error('Error al suscribirse al tema', err);
+    } else {
+      console.log('Suscripción exitosa al tema', tema);
+    }
   });
 });
 
 client.on('connect', function () {
   console.log('Conectado al broker MQTT');
-  
+
   // Suscribirse a un tema
   const tema = '/Hit/Serveis/Impresora';
   client.subscribe(tema, function (err) {
-      if (err) {
-          console.error('Error al suscribirse al tema', err);
-      } else {
-          console.log('Suscripción exitosa al tema', tema);
-      }
+    if (err) {
+      console.error('Error al suscribirse al tema', err);
+    } else {
+      console.log('Suscripción exitosa al tema', tema);
+    }
   });
 });
 
 
 // Manejar mensajes recibidos
 client.on('message', async function (topic, message) {
-  if (debug){
-      console.log('Mensaje recibido en el tema:', topic, '- Contenido:', message.toString())
+  if (debug) {
+    console.log('Mensaje recibido en el tema:', topic, '- Contenido:', message.toString())
   }
   try {
     const msgJson = JSON.parse(message);
     console.log('Mensaje en modo JSON:', msgJson);
     if (topic == '/Hit/Serveis/Impresora') {
-        if (msgJson.msg) {
-            console.log('Guardamos: ', msgJson.macAddress);
-            if (!Impresiones[msgJson.macAddress]) {
-                Impresiones[msgJson.macAddress] = []; // Si la clave no existe, crea un nuevo vector
-            }
-            Impresiones[msgJson.macAddress].push(msgJson.msg);
-            console.log('Texto:', Impresiones[msgJson.macAddress]);
+      if (msgJson.msg) {
+        console.log('Guardamos: ', msgJson.macAddress);
+        if (!Impresiones[msgJson.macAddress]) {
+          Impresiones[msgJson.macAddress] = []; // Si la clave no existe, crea un nuevo vector
         }
-    }    
+        Impresiones[msgJson.macAddress].push(msgJson.msg);
+        console.log('Texto:', Impresiones[msgJson.macAddress]);
+      }
+    }
   } catch (error) {
-      console.log('Mensaje recibido como una cadena: ', message.toString());
+    console.log('Mensaje recibido como una cadena: ', message.toString());
   }
 });
 
 app.post("/mqttPR", async function (req, res) {
   console.log('----------------------post message MQTT----------------------')
   let macAddress = req.body.printerMAC;
-  console.log('post message Post ',macAddress)  
+  console.log('post message Post ', macAddress)
   let status = req.body["status"];
-  sendMQTT(macAddress,status);
+  sendMQTT(macAddress, status);
   res.writeHead(200, { "Content-Type": "text/plain" });
-  if(Impresiones[macAddress] && Impresiones[macAddress].length > 0){
+  if (Impresiones[macAddress] && Impresiones[macAddress].length > 0) {
     console.log('Impresiones: ', Impresiones[macAddress])
     res.end(JSON.stringify({ jobReady: true, mediaTypes: ["text/plain"] }));
-  }else{
+  } else {
     console.log('Nada a imprimir')
     res.end(JSON.stringify({ jobReady: false, mediaTypes: ["text/plain"] }));
   }
@@ -170,7 +177,7 @@ app.delete("/mqttPR", async function (req, res) {
   let macAddress = req.query.mac;
   console.log('delete message Delete: ', macAddress);
   Impresiones[macAddress].shift();
-  if(Impresiones[macAddress].length === 0){
+  if (Impresiones[macAddress].length === 0) {
     delete Impresiones[macAddress];
   }
   res.writeHead(200, { "Content-Type": "text/plain" });
@@ -179,7 +186,7 @@ app.delete("/mqttPR", async function (req, res) {
 
 //Imprimir pulsado boton {1,2,3}, si llega mensaje volver a 1. 
 
-function sendMQTT(macAddress, status){
+function sendMQTT(macAddress, status) {
   const nowSpain = momentTimeZone().tz('Europe/Madrid').format();
   if (statusSpliter(status)) {
     if (!Impresiones[macAddress]) {
@@ -189,11 +196,11 @@ function sendMQTT(macAddress, status){
     console.log(Boton[macAddress])
     Impresiones[macAddress].push('Se ha pulsado el boton ' + Boton[macAddress] + ' vez');
     let msg = '';
-    if (Boton[macAddress]==1) msg = 'ImpresoraIpReposicion';
-    else if (Boton[macAddress]==2) msg = 'ImpresoraPremutBoto2';
-    else if (Boton[macAddress]==3) msg = 'ImpresoraPremutBoto3';
+    if (Boton[macAddress] == 1) msg = 'ImpresoraIpReposicion';
+    else if (Boton[macAddress] == 2) msg = 'ImpresoraPremutBoto2';
+    else if (Boton[macAddress] == 3) msg = 'ImpresoraPremutBoto3';
     else msg = 'Error';
-    
+
     const message = JSON.stringify({
       mac: macAddress,
       msg: msg,
@@ -225,9 +232,9 @@ function botonInicializar(macAddress) {
 
 function botonIncrementar(macAddress) {
   botonInicializar(macAddress)
-  if(Boton[macAddress] < 3){
+  if (Boton[macAddress] < 3) {
     Boton[macAddress]++;
-  }else{
+  } else {
     Boton[macAddress] = 1;
   }
 }
@@ -236,9 +243,10 @@ function botonIncrementar(macAddress) {
 
 app.post("/printer", async function (req, res) {
   process.stdout.write(".");
-  console.log('get message 2')
+  //console.log('get message 2')
   try {
-    let macAddress = req.rawHeaders[11];
+    let macAddress = req.body.printerMAC;
+    //console.log('macAddress', macAddress);
     let status = req.body["status"];
     if (!procesedMacs.includes(macAddress))
       conexion
@@ -342,10 +350,11 @@ app.post("/printer", async function (req, res) {
 
 app.get("/printer", async function (req, res) {
   process.stdout.write("*");
-  console.log('get message',req)
+  //console.log('get message', req)
   try {
     res.writeHead(200, { "Content-Type": "text/plain" });
-    let macAddress = req.rawHeaders[21];
+    let macAddress = req.query.mac;
+    //console.log('macAddress', macAddress);
     var response = "ERROR CON EL SERVIDOR, PORFAVOR CONTACTE CON HIT";
     let Sql = ``;
     Sql += `DECLARE @MyMac nvarchar(20); `;
@@ -384,11 +393,11 @@ app.get("/printer", async function (req, res) {
                   fs.writeFile(
                     "./files/Codis.bin",
                     JSON.stringify(data),
-                    function (err) {}
+                    function (err) { }
                   );
 
-                  fs.unlink(filenameGet, function (err) {});
-                  fs.unlink(filenameOut, function (err) {});
+                  fs.unlink(filenameGet, function (err) { });
+                  fs.unlink(filenameOut, function (err) { });
                   res.end(data);
                 });
               }
@@ -403,7 +412,7 @@ app.get("/printer", async function (req, res) {
 });
 
 app.delete("/printer", async function (req, res) {
-  console.log('get message 3')
+  //console.log('get message 3')
   let macAddress = req.rawHeaders[11];
   let servitDate = `[Servit-${moment().format("YY-MM-DD")}]`;
   let empresaSQL = `select  nom,empresa  from ImpresorasIp where Mac = '${macAddress}' `;
@@ -420,10 +429,8 @@ app.delete("/printer", async function (req, res) {
       conexion
         .recHit(
           empresa.recordset[0].empresa,
-          `update ${servitDate} Set Hora= ${moment().hour()}, comentari='Reposicion[${
-            "IMP " + moment().format("hh:mm:ss")
-          }]' Where  client = '${
-            empresa.recordset[0].nom.split("_")[1]
+          `update ${servitDate} Set Hora= ${moment().hour()}, comentari='Reposicion[${"IMP " + moment().format("hh:mm:ss")
+          }]' Where  client = '${empresa.recordset[0].nom.split("_")[1]
           }' and Hora = 1`
         )
         .then((x) => {
@@ -439,11 +446,15 @@ app.delete("/printer", async function (req, res) {
 });
 
 var server = app.listen(app.get("port"), function () {
-  var host = "http://santaana2.nubehit.com";
+  //var host = "https://impresoras.nubehit.com";
   //host = "54.77.231.164";
   //host = "192.168.1.148";
+  var host = "localhost";
   var port = server.address().port;
 
   console.log("API app listening at http://%s:%s", host, port);
 });
 
+app.get("/", function (req, res) {
+  res.status(200).sendFile(path.join(__dirname, "public", "index.html"));
+});
