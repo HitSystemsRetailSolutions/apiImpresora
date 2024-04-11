@@ -381,7 +381,8 @@ app.get("/printer", async function (req, res) {
     Sql += `set @Sql=@Sql + 'DECLARE @T varchar(max);' `;
     Sql += `set @Sql=@Sql + 'SELECT top 1 @T= texte, @I=id FROM ' + @Empresa + '.[dbo].[ImpresoraCola] where Impresora=' +CHAR(39)+ @ImpresoraNom + CHAR(39) + ' order by tmstpeticio '; `;
     Sql += `set @Sql=@Sql + 'delete ' + @Empresa + '.[dbo].[ImpresoraCola] Where id=@I ' ; `;
-    Sql += `set @Sql=@Sql + 'Select @T ;' `;
+    Sql += `set @Sql=@Sql + 'Select ''[magnify: width 2; height 2]'' + @T + ''[magnify: width 1; height 1]'' ;' `;
+    //Sql += `set @Sql=@Sql + 'Select @T ;' `;
     Sql += `EXEC  sp_executesql  @Sql`;
     conexion.recHit("Hit", Sql).then((data) => {
       let filenameGet =
