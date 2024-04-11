@@ -1,5 +1,5 @@
 const conexion = require("./conexion");
-require('dotenv').config();
+require("dotenv").config();
 const moment = require("moment");
 var express = require("express");
 const path = require("path");
@@ -7,8 +7,8 @@ const fs = require("fs");
 const { exec } = require("node:child_process");
 const { Binary } = require("mssql");
 const debug = true;
-const mqtt = require('mqtt');
-const momentTimeZone = require('moment-timezone');
+const mqtt = require("mqtt");
+const momentTimeZone = require("moment-timezone");
 const { rsvgVersion } = require("canvas");
 const mqttOptions = {
   host: process.env.MQTT_HOST,
@@ -91,91 +91,96 @@ const Impresiones = {};
 const Boton = {};
 
 app.get("/test", async function (req, res) {
-  console.log('patata',)
+  console.log("patata");
 });
 
-client.on('connect', function () {
-  console.log('Conectado al broker MQTT');
+client.on("connect", function () {
+  console.log("Conectado al broker MQTT");
 
   // Suscribirse a un tema
-  const tema = '/Hit/Serveis/Contable/Impresora';
+  const tema = "/Hit/Serveis/Contable/Impresora";
   client.subscribe(tema, function (err) {
     if (err) {
-      console.error('Error al suscribirse al tema', err);
+      console.error("Error al suscribirse al tema", err);
     } else {
-      console.log('Suscripción exitosa al tema', tema);
+      console.log("Suscripción exitosa al tema", tema);
     }
   });
 });
 
-client.on('connect', function () {
-  console.log('Conectado al broker MQTT');
+client.on("connect", function () {
+  console.log("Conectado al broker MQTT");
 
   // Suscribirse a un tema
-  const tema = '/Hit/Serveis/Impresora';
+  const tema = "/Hit/Serveis/Impresora";
   client.subscribe(tema, function (err) {
     if (err) {
-      console.error('Error al suscribirse al tema', err);
+      console.error("Error al suscribirse al tema", err);
     } else {
-      console.log('Suscripción exitosa al tema', tema);
+      console.log("Suscripción exitosa al tema", tema);
     }
   });
 });
-
 
 // Manejar mensajes recibidos
-client.on('message', async function (topic, message) {
+client.on("message", async function (topic, message) {
   if (debug) {
-    console.log('Mensaje recibido en el tema:', topic, '- Contenido:', message.toString())
+    console.log(
+      "Mensaje recibido en el tema:",
+      topic,
+      "- Contenido:",
+      message.toString()
+    );
   }
   try {
     const msgJson = JSON.parse(message);
-    console.log('Mensaje en modo JSON:', msgJson);
-    if (topic == '/Hit/Serveis/Impresora') {
+    console.log("Mensaje en modo JSON:", msgJson);
+    if (topic == "/Hit/Serveis/Impresora") {
       if (msgJson.msg) {
-        console.log('Guardamos: ', msgJson.macAddress);
+        console.log("Guardamos: ", msgJson.macAddress);
         if (!Impresiones[msgJson.macAddress]) {
           Impresiones[msgJson.macAddress] = []; // Si la clave no existe, crea un nuevo vector
         }
         Impresiones[msgJson.macAddress].push(msgJson.msg);
-        console.log('Texto:', Impresiones[msgJson.macAddress]);
+        console.log("Texto:", Impresiones[msgJson.macAddress]);
       }
     }
   } catch (error) {
-    console.log('Mensaje recibido como una cadena: ', message.toString());
+    console.log("Mensaje recibido como una cadena: ", message.toString());
   }
 });
 
 app.post("/mqttPR", async function (req, res) {
-  console.log('----------------------post message MQTT----------------------')
+  console.log("----------------------post message MQTT----------------------");
   let macAddress = req.body.printerMAC;
-  console.log('post message Post ', macAddress)
+  console.log("post message Post ", macAddress);
   let status = req.body["status"];
   sendMQTT(macAddress, status);
   res.writeHead(200, { "Content-Type": "text/plain" });
   if (Impresiones[macAddress] && Impresiones[macAddress].length > 0) {
-    console.log('Impresiones: ', Impresiones[macAddress])
+    console.log("Impresiones: ", Impresiones[macAddress]);
     res.end(JSON.stringify({ jobReady: true, mediaTypes: ["text/plain"] }));
   } else {
-    console.log('Nada a imprimir')
+    console.log("Nada a imprimir");
     res.end(JSON.stringify({ jobReady: false, mediaTypes: ["text/plain"] }));
   }
-
 });
 
 app.get("/mqttPR", async function (req, res) {
-  console.log('----------------------get message MQTT----------------------')
+  console.log("----------------------get message MQTT----------------------");
   let macAddress = req.query.mac;
-  console.log('get message Get: ', macAddress);
+  console.log("get message Get: ", macAddress);
   res.writeHead(200, { "Content-Type": "text/plain" });
-  console.log('Impresiones: ', Impresiones[macAddress])
+  console.log("Impresiones: ", Impresiones[macAddress]);
   res.end(Impresiones[macAddress][0]);
 });
 
 app.delete("/mqttPR", async function (req, res) {
-  console.log('----------------------delete message MQTT----------------------')
+  console.log(
+    "----------------------delete message MQTT----------------------"
+  );
   let macAddress = req.query.mac;
-  console.log('delete message Delete: ', macAddress);
+  console.log("delete message Delete: ", macAddress);
   Impresiones[macAddress].shift();
   if (Impresiones[macAddress].length === 0) {
     delete Impresiones[macAddress];
@@ -184,44 +189,46 @@ app.delete("/mqttPR", async function (req, res) {
   res.end(JSON.stringify({ jobReady: false, mediaTypes: ["text/plain"] }));
 });
 
-//Imprimir pulsado boton {1,2,3}, si llega mensaje volver a 1. 
+//Imprimir pulsado boton {1,2,3}, si llega mensaje volver a 1.
 
 function sendMQTT(macAddress, status) {
-  const nowSpain = momentTimeZone().tz('Europe/Madrid').format();
+  const nowSpain = momentTimeZone().tz("Europe/Madrid").format();
   if (statusSpliter(status)) {
     if (!Impresiones[macAddress]) {
       Impresiones[macAddress] = [];
     }
-    botonInicializar(macAddress)
-    console.log(Boton[macAddress])
-    Impresiones[macAddress].push('Se ha pulsado el boton ' + Boton[macAddress] + ' vez');
-    let msg = '';
-    if (Boton[macAddress] == 1) msg = 'ImpresoraIpReposicion';
-    else if (Boton[macAddress] == 2) msg = 'ImpresoraPremutBoto2';
-    else if (Boton[macAddress] == 3) msg = 'ImpresoraPremutBoto3';
-    else msg = 'Error';
+    botonInicializar(macAddress);
+    console.log(Boton[macAddress]);
+    Impresiones[macAddress].push(
+      "Se ha pulsado el boton " + Boton[macAddress] + " vez"
+    );
+    let msg = "";
+    if (Boton[macAddress] == 1) msg = "ImpresoraIpReposicion";
+    else if (Boton[macAddress] == 2) msg = "ImpresoraPremutBoto2";
+    else if (Boton[macAddress] == 3) msg = "ImpresoraPremutBoto3";
+    else msg = "Error";
 
     const message = JSON.stringify({
       mac: macAddress,
       msg: msg,
-      time: nowSpain // Convertir la fecha a un formato ISO string
+      time: nowSpain, // Convertir la fecha a un formato ISO string
     });
-    client.publish('/Hit/Serveis/Contable/Impresora', message);
+    client.publish("/Hit/Serveis/Contable/Impresora", message);
     botonIncrementar(macAddress);
   } else {
     const message = JSON.stringify({
       mac: macAddress,
-      msg: 'BotonNoPremut',
-      time: nowSpain // Convertir la fecha a un formato ISO string
+      msg: "BotonNoPremut",
+      time: nowSpain, // Convertir la fecha a un formato ISO string
     });
     //client.publish('/Hit/Serveis/Contable/Impresora', message);
-    console.log('La tercera posición de status no es un 4');
+    console.log("La tercera posición de status no es un 4");
   }
 }
 
 function statusSpliter(status) {
-  const partes = status.split(' '); // Dividir la cadena en partes separadas por espacios
-  return partes.length >= 3 && partes[2] === '4'; // Verificar si hay al menos 3 partes y la tercera es '4'
+  const partes = status.split(" "); // Dividir la cadena en partes separadas por espacios
+  return partes.length >= 3 && partes[2] === "4"; // Verificar si hay al menos 3 partes y la tercera es '4'
 }
 
 function botonInicializar(macAddress) {
@@ -231,7 +238,7 @@ function botonInicializar(macAddress) {
 }
 
 function botonIncrementar(macAddress) {
-  botonInicializar(macAddress)
+  botonInicializar(macAddress);
   if (Boton[macAddress] < 3) {
     Boton[macAddress]++;
   } else {
@@ -393,11 +400,11 @@ app.get("/printer", async function (req, res) {
                   fs.writeFile(
                     "./files/Codis.bin",
                     JSON.stringify(data),
-                    function (err) { }
+                    function (err) {}
                   );
 
-                  fs.unlink(filenameGet, function (err) { });
-                  fs.unlink(filenameOut, function (err) { });
+                  fs.unlink(filenameGet, function (err) {});
+                  fs.unlink(filenameOut, function (err) {});
                   res.end(data);
                 });
               }
@@ -406,8 +413,8 @@ app.get("/printer", async function (req, res) {
         }
       });
     });
-  } catch {
-    res.end("Error");
+  } catch (error) {
+    console.log("Error: ", error);
   }
 });
 
@@ -429,8 +436,10 @@ app.delete("/printer", async function (req, res) {
       conexion
         .recHit(
           empresa.recordset[0].empresa,
-          `update ${servitDate} Set Hora= ${moment().hour()}, comentari='Reposicion[${"IMP " + moment().format("hh:mm:ss")
-          }]' Where  client = '${empresa.recordset[0].nom.split("_")[1]
+          `update ${servitDate} Set Hora= ${moment().hour()}, comentari='Reposicion[${
+            "IMP " + moment().format("hh:mm:ss")
+          }]' Where  client = '${
+            empresa.recordset[0].nom.split("_")[1]
           }' and Hora = 1`
         )
         .then((x) => {
