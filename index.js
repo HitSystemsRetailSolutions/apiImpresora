@@ -278,10 +278,10 @@ app.post("/printer", async function (req, res) {
     //process.stdout.write(macAddress)
     let Sql = ``;
     Sql += `DECLARE @MyMac nvarchar(20); `;
-    Sql += `DECLARE @ImpresoraNom nvarchar(200); `;
+    Sql += `DECLARE @ImpresoraNom nvarchar(30); `;
     Sql += `DECLARE @Empresa nvarchar(20); `;
     Sql += `declare @ImpresoraCodi nvarchar(20); `;
-    Sql += `DECLARE @Sql nvarchar(2000); `;
+    Sql += `DECLARE @Sql nvarchar(3000); `;
     Sql += `Declare @BotoApretat BIT; `;
     Sql += `Set @MyMac = '${macAddress}'; `;
     if (status.substring(5, 6) == "4") {
@@ -296,7 +296,7 @@ app.post("/printer", async function (req, res) {
     Sql += `	if ( @Empresa = 'Hit')  `;
     Sql += `	begin `;
     Sql += `		delete [Hit].[dbo].[ImpresoraCola] Where Impresora = @ImpresoraNom `;
-    Sql += `		insert into [Hit].[dbo].[ImpresoraCola] (id,impresora,Texte,TmStPeticio) values (newid(),@ImpresoraNom, 'Impresora NO Configurada.[\]Truqueu al 937161010[\]Codi Impresora :[\][magnify: width 2; height 2][\]' +CHAR(39)+ @ImpresoraNom + CHAR(39)+ '[\][magnify: width 1; height 1][\]Gracies :)[\]',getdate()) `;
+    Sql += `		insert into [Hit].[dbo].[ImpresoraCola] (id,impresora,Texte,TmStPeticio) values (newid(),@ImpresoraNom, 'Impressora NO Configurada.[\]Truqueu al 937161010[\]Codi impressora :[\][magnify: width 2; height 2][\]' +CHAR(39)+ @ImpresoraNom + CHAR(39)+ '[\][magnify: width 1; height 1][\]Gràcies :)[\]',getdate()) `;
     Sql += `	end `;
     Sql += `	else `;
     Sql += `	begin `;
@@ -312,19 +312,19 @@ app.post("/printer", async function (req, res) {
     Sql += `		set @Sql = @Sql + '	begin ' `;
     Sql += `		set @Sql = @Sql + '		Delete [' +@Empresa + '].[dbo].[ImpresoraCola] where impresora = ' +CHAR(39)+ @ImpresoraNom + CHAR(39)+ ' ' `;
     Sql += `		set @Sql = @Sql + '		Delete [' +@Empresa + '].[dbo].FeinesAFer Where (tipus = ' +CHAR(39)+ 'ImpresoraIpReposicion' +CHAR(39)+ ' or tipus = ' +CHAR(39)+ 'ImpresoraPremutBoto2' +CHAR(39)+ ') and param1=' +CHAR(39)+ @ImpresoraNom + CHAR(39)+ ' ' `;
-    Sql += `		set @Sql = @Sql + '		insert into [' +@Empresa + '].[dbo].[ImpresoraCola] (id,impresora,Texte,TmStPeticio) values (newid(),' +CHAR(39)+ @ImpresoraNom + CHAR(39)+ ', ' +CHAR(39)+ '[magnify: width 2; height 2]Impresio CANCELADA !!![magnify: width 1; height 1]' +CHAR(39)+ ',getdate()) ' `;
+    Sql += `		set @Sql = @Sql + '		insert into [' +@Empresa + '].[dbo].[ImpresoraCola] (id,impresora,Texte,TmStPeticio) values (newid(),' +CHAR(39)+ @ImpresoraNom + CHAR(39)+ ', ' +CHAR(39)+ '[magnify: width 2; height 2]Impressió CANCEL·LADA !!![magnify: width 1; height 1]' +CHAR(39)+ ',getdate()) ' `;
     Sql += `		set @Sql = @Sql + '	end ' `;
     Sql += `		set @Sql = @Sql + 'else '	 `;
     Sql += `		set @Sql = @Sql + 'if (@click > 0)'  `;
     Sql += `		set @Sql = @Sql + '	begin ' `;
     Sql += `		set @Sql = @Sql + '		Delete [' +@Empresa + '].[dbo].FeinesAFer where Tipus = ' +CHAR(39)+ 'ImpresoraIpReposicion' +CHAR(39)+ ' and Param1 = ' +CHAR(39)+ @ImpresoraNom + CHAR(39)+' ' `;
     Sql += `		set @Sql = @Sql + '		Insert Into [' +@Empresa + '].[dbo].FeinesAFer (id, Tipus,Ciclica,Param1) Values (newid(), ' +CHAR(39)+ 'ImpresoraPremutBoto2' +CHAR(39)+ ',0,' +CHAR(39)+ @ImpresoraNom + CHAR(39)+')' `;
-    Sql += `		set @Sql = @Sql + '		insert into [' +@Empresa + '].[dbo].[ImpresoraCola] (id,impresora,Texte,TmStPeticio) values (newid(),' +CHAR(39)+ @ImpresoraNom + CHAR(39)+ ', ' +CHAR(39)+ '[magnify: width 2; height 2]Segon Llistat Demanat. Si tornes a pulsar es cancela la impressio[magnify: width 1; height 1]' +CHAR(39)+ ',getdate())' `;
+    Sql += `		set @Sql = @Sql + '		insert into [' +@Empresa + '].[dbo].[ImpresoraCola] (id,impresora,Texte,TmStPeticio) values (newid(),' +CHAR(39)+ @ImpresoraNom + CHAR(39)+ ', ' +CHAR(39)+ '[magnify: width 2; height 2]Segon llistat demanat. Si tornes a prémer el botó es cancel·larà la impressió[magnify: width 1; height 1]' +CHAR(39)+ ',getdate())' `;
     Sql += `		set @Sql = @Sql + '	end ' `;
     Sql += `		set @Sql = @Sql + 'else '		 `;
     Sql += `		set @Sql = @Sql + '	begin ' `;
     Sql += `		set @Sql = @Sql + '		Insert Into [' +@Empresa + '].[dbo].FeinesAFer (id, Tipus,Ciclica,Param1) Values (newid(), ' +CHAR(39)+ 'ImpresoraIpReposicion' +CHAR(39)+ ',0,' +CHAR(39)+ @ImpresoraNom + CHAR(39)+')' `;
-    Sql += `		set @Sql = @Sql + '		insert into [' +@Empresa + '].[dbo].[ImpresoraCola] (id,impresora,Texte,TmStPeticio) values (newid(),' +CHAR(39)+ @ImpresoraNom + CHAR(39)+ ', ' +CHAR(39)+ '[magnify: width 2; height 2]Peticio Reposicio Feta.....[magnify: width 1; height 1]' +CHAR(39)+ ',getdate())' `;
+    Sql += `		set @Sql = @Sql + '		insert into [' +@Empresa + '].[dbo].[ImpresoraCola] (id,impresora,Texte,TmStPeticio) values (newid(),' +CHAR(39)+ @ImpresoraNom + CHAR(39)+ ', ' +CHAR(39)+ '[magnify: width 2; height 2]Petició reposició feta ...[magnify: width 1; height 1]' +CHAR(39)+ ',getdate())' `;
     Sql += `		set @Sql = @Sql + '	end ' `;
     Sql += ` `;
     Sql += `		EXEC  sp_executesql  @Sql `;
@@ -372,9 +372,9 @@ app.get("/printer", async function (req, res) {
     var response = "ERROR CON EL SERVIDOR, PORFAVOR CONTACTE CON HIT";
     let Sql = ``;
     Sql += `DECLARE @MyMac nvarchar(20); `;
-    Sql += `DECLARE @ImpresoraNom nvarchar(200); `;
+    Sql += `DECLARE @ImpresoraNom nvarchar(30); `;
     Sql += `DECLARE @Empresa nvarchar(20); `;
-    Sql += `DECLARE @Sql nvarchar(2000); `;
+    Sql += `DECLARE @Sql nvarchar(3000); `;
     Sql += `Set @MyMac = '${macAddress}'; `;
     Sql += `select  @ImpresoraNom = nom,@Empresa = empresa  from ImpresorasIp where Mac = @MyMac `;
     Sql += `set @Sql=       'DECLARE @I varchar(max);' `;
