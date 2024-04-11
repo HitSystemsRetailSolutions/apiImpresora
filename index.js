@@ -341,13 +341,13 @@ app.post("/printer", async function (req, res) {
         res.writeHead(200, { "Content-Type": "text/plain" });
         //console.log(data.recordset[0]["Q"]);
 
-        if (data.recordset[0]["Q"] > 0){
+        if (data.recordset[0]["Q"] > 0) {
           res.end(
             JSON.stringify({ jobReady: true, mediaTypes: ["text/plain"] })
           );
           //console.log("mondongo");
         }
-        else{
+        else {
           res.end(
             JSON.stringify({ jobReady: false, mediaTypes: ["text/plain"] })
           );
@@ -409,11 +409,11 @@ app.get("/printer", async function (req, res) {
                   fs.writeFile(
                     "./files/Codis.bin",
                     JSON.stringify(data),
-                    function (err) {}
+                    function (err) { }
                   );
 
-                  fs.unlink(filenameGet, function (err) {});
-                  fs.unlink(filenameOut, function (err) {});
+                  fs.unlink(filenameGet, function (err) { });
+                  fs.unlink(filenameOut, function (err) { });
                   res.end(data);
                 });
               }
@@ -436,8 +436,8 @@ app.delete("/printer", async function (req, res) {
     .recHit("Hit", empresaSQL)
     .then((empresa) => {
       if (
-        !empresa.recordset[0].nom.includes("Tienda") ||
-        !empresa.recordset[0].nom.includes("Tot")
+        !empresa.recordset[0].nom.includes("Tienda") &&
+        (!empresa.recordset[0].nom.includes("Tot") || !empresa.recordset[0].nom.includes("Panadero"))
       ) {
         res.end("none");
         return;
@@ -445,10 +445,8 @@ app.delete("/printer", async function (req, res) {
       conexion
         .recHit(
           empresa.recordset[0].empresa,
-          `update ${servitDate} Set Hora= ${moment().hour()}, comentari='Reposicion[${
-            "IMP " + moment().format("hh:mm:ss")
-          }]' Where  client = '${
-            empresa.recordset[0].nom.split("_")[1]
+          `update ${servitDate} Set Hora= ${moment().hour()}, comentari='Reposicion[${"IMP " + moment().format("hh:mm:ss")
+          }]' Where  client = '${empresa.recordset[0].nom.split("_")[1]
           }' and Hora = 1`
         )
         .then((x) => {
