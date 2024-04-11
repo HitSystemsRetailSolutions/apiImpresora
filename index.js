@@ -278,7 +278,7 @@ app.post("/printer", async function (req, res) {
     //process.stdout.write(macAddress)
     let Sql = ``;
     Sql += `DECLARE @MyMac nvarchar(20); `;
-    Sql += `DECLARE @ImpresoraNom nvarchar(20); `;
+    Sql += `DECLARE @ImpresoraNom nvarchar(200); `;
     Sql += `DECLARE @Empresa nvarchar(20); `;
     Sql += `declare @ImpresoraCodi nvarchar(20); `;
     Sql += `DECLARE @Sql nvarchar(2000); `;
@@ -333,19 +333,26 @@ app.post("/printer", async function (req, res) {
     Sql += `set @Sql='select count(*) Q from ' + @Empresa + '.[dbo].[ImpresoraCola] where Impresora=' +CHAR(39)+ @ImpresoraNom + CHAR(39);`;
     Sql += `EXEC  sp_executesql  @Sql`;
 
+    //console.log(Sql);
+
     conexion
       .recHit("Hit", Sql)
       .then((data) => {
         res.writeHead(200, { "Content-Type": "text/plain" });
+        //console.log(data.recordset[0]["Q"]);
 
-        if (data.recordset[0]["Q"] > 0)
+        if (data.recordset[0]["Q"] > 0){
           res.end(
             JSON.stringify({ jobReady: true, mediaTypes: ["text/plain"] })
           );
-        else
+          //console.log("mondongo");
+        }
+        else{
           res.end(
             JSON.stringify({ jobReady: false, mediaTypes: ["text/plain"] })
           );
+          //console.log("patata");
+        }
       })
       .catch((err) => {
         res.end("Error");
@@ -365,7 +372,7 @@ app.get("/printer", async function (req, res) {
     var response = "ERROR CON EL SERVIDOR, PORFAVOR CONTACTE CON HIT";
     let Sql = ``;
     Sql += `DECLARE @MyMac nvarchar(20); `;
-    Sql += `DECLARE @ImpresoraNom nvarchar(20); `;
+    Sql += `DECLARE @ImpresoraNom nvarchar(200); `;
     Sql += `DECLARE @Empresa nvarchar(20); `;
     Sql += `DECLARE @Sql nvarchar(2000); `;
     Sql += `Set @MyMac = '${macAddress}'; `;
@@ -382,6 +389,7 @@ app.get("/printer", async function (req, res) {
       let filenameOut =
         "./files/tempFileOut" + Math.floor(Math.random() * 9999) + ".bin";
       if (data.recordset == undefined) return res.end("Error");
+      //console.log(data.recordset);
       let msg = processOldCodes(data.recordset[0][""]);
       fs.writeFile(filenameGet, msg, function (err) {
         if (err) console.log("1", err);
