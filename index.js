@@ -350,8 +350,8 @@ app.post("/printer", async function (req, res) {
       .catch((err) => {
         res.end("Error");
       });
-  } catch {
-    res.end("Error");
+  } catch (error) {
+    console.log("Error: ", error);
   }
 });
 
