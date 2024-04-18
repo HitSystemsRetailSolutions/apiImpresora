@@ -134,12 +134,16 @@ client.on("message", async function (topic, message) {
   }
   try {
     const msgJson = JSON.parse(message);
-    console.log("Mensaje en modo JSON:", msgJson);
-    if (topic == "/Hit/Serveis/Impresora") {
-      if (msgJson.msg) {
-        console.log("Guardamos: ", msgJson.macAddress);
-        if (!Impresiones[msgJson.macAddress]) {
-          Impresiones[msgJson.macAddress] = []; // Si la clave no existe, crea un nuevo vector
+
+    console.log('Mensaje en modo JSON test:', msgJson);
+    if (topic == '/Hit/Serveis/Impresora') {
+        if (msgJson.msg) {
+            console.log('Guardamos: ', msgJson.macAddress);
+            if (!Impresiones[msgJson.macAddress]) {
+                Impresiones[msgJson.macAddress] = []; // Si la clave no existe, crea un nuevo vector
+            }
+            Impresiones[msgJson.macAddress].push(msgJson.msg);
+            console.log('Texto:', Impresiones[msgJson.macAddress]);
         }
         Impresiones[msgJson.macAddress].push(msgJson.msg);
         console.log("Texto:", Impresiones[msgJson.macAddress]);
