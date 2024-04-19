@@ -528,30 +528,57 @@ app.get("/printer", async function (req, res) {
       fs.writeFile(filenameGet, msg, function (err) {
         if (err) console.log("1", err);
         else {
-          exec(
-            `"./cputil/cputil" utf8 thermal3 scale-to-fit decode application/vnd.star.line ./${filenameGet} ./${filenameOut}`,
-            (error, stdout, stderr) => {
-              if (error) {
-                console.warn("Exec", error);
-              } else {
-                fs.readFile(filenameOut, "utf8", (err, data) => {
-                  if (err) {
-                    res.end("read", filenameOut, err);
-                  }
+          if (msg.includes("BOTÓ")) {
+            exec(
+              `"./cputil/cputil" utf8 thermal3 buzzer-start 2 scale-to-fit decode application/vnd.star.line ./${filenameGet} ./${filenameOut}`,
+              (error, stdout, stderr) => {
+                if (error) {
+                  console.warn("Exec", error);
+                } else {
+                  fs.readFile(filenameOut, "utf8", (err, data) => {
+                    if (err) {
+                      res.end("read", filenameOut, err);
+                    }
 
-                  fs.writeFile(
-                    "./files/Codis.bin",
-                    JSON.stringify(data),
-                    function (err) { }
-                  );
+                    fs.writeFile(
+                      "./files/Codis.bin",
+                      JSON.stringify(data),
+                      function (err) { }
+                    );
 
-                  fs.unlink(filenameGet, function (err) { });
-                  fs.unlink(filenameOut, function (err) { });
-                  res.end(data);
-                });
+                    fs.unlink(filenameGet, function (err) { });
+                    fs.unlink(filenameOut, function (err) { });
+                    res.end(data);
+                  });
+                }
               }
-            }
-          );
+            );
+          } else {
+            exec(
+              `"./cputil/cputil" utf8 thermal3 scale-to-fit decode application/vnd.star.line ./${filenameGet} ./${filenameOut}`,
+              (error, stdout, stderr) => {
+                if (error) {
+                  console.warn("Exec", error);
+                } else {
+                  fs.readFile(filenameOut, "utf8", (err, data) => {
+                    if (err) {
+                      res.end("read", filenameOut, err);
+                    }
+
+                    fs.writeFile(
+                      "./files/Codis.bin",
+                      JSON.stringify(data),
+                      function (err) { }
+                    );
+
+                    fs.unlink(filenameGet, function (err) { });
+                    fs.unlink(filenameOut, function (err) { });
+                    res.end(data);
+                  });
+                }
+              }
+            );
+          }
         }
       });
     });
@@ -559,6 +586,7 @@ app.get("/printer", async function (req, res) {
     console.log("Error: ", error);
   }
 });
+
 
 app.delete("/printer", async function (req, res) {
   //console.log('get message 3')
@@ -607,3 +635,4 @@ var server = app.listen(app.get("port"), function () {
 app.get("/", function (req, res) {
   res.status(200).sendFile(path.join(__dirname, "public", "index.html"));
 });
+
