@@ -190,8 +190,8 @@ function ticketNumberImprimir(macAddress, msg, ticketNumber) {
   }
   ticketNumberInicializar(macAddress, ticketNumber);
   let message = "[bold: on]\[align: center]" + '********************************************' +
-    "\nNumero: " + ticketNumber[macAddress] + " - " + msg
-    + "\n" + '********************************************';
+    "\n[magnify: width 2; height 2]Numero: " + ticketNumber[macAddress] + " - " + msg
+    + "\n" + '[magnify: width 1; height 1]********************************************\n';
 
   console.log(message);
   Impresiones[macAddress].push(message);
@@ -209,12 +209,36 @@ function ticketNumberIncrementar(macAddress, ticketNumber) {
   ticketNumber[macAddress]++;
 }
 
+function reinicializarNumeros() {
+  reinicializarLista(ticketNumberRojo);
+  reinicializarLista(ticketNumberAzul);
+}
+
+function reinicializarLista(lista) {
+  for (let macAddress in lista) {
+    lista[macAddress] = 1;
+  }
+}
+
+function verificarHoraReinicializacion() {
+  const horaReinicializacion = '00:00'; // Hora de reinicialización (en formato de 24 horas)
+  const ahora = new Date();
+  const horaActual = ahora.getHours() + ':' + (ahora.getMinutes() < 10 ? '0' : '') + ahora.getMinutes();
+  
+  // Verificar si la hora actual es igual a la hora de reinicialización
+  if (horaActual === horaReinicializacion) {
+    // Llamar a la función de reinicialización
+    reinicializarNumeros();
+  }
+}
+
 app.post("/mqttPR", async function (req, res) {
   console.log("----------------------post message MQTT----------------------");
   let macAddress = req.body.printerMAC;
   console.log("post message Post ", macAddress);
   const tema = `/Hit/Serveis/Impresora/${macAddress}`;
   suscribirseAlTema(tema);
+  verificarHoraReinicializacion()
   let status = req.body["status"];
   sendMQTT(macAddress, status);
   res.writeHead(200, { "Content-Type": "text/plain" });
@@ -243,13 +267,13 @@ app.get("/mqttPR", async function (req, res) {
     }
 
     exec(
-    `"./cputil/cputil" utf8 thermal3 scale-to-fit decode application/vnd.star.line ./${filenameGet} ./${filenameOut}`,
-    { env: { COREHOST_TRACE: '1' } }, // Establecer la variable de entorno COREHOST_TRACE
-    (error, stdout, stderr) => {
-      if (error) {
-        console.warn("Error al ejecutar el comando", error);
-        return;
-      }
+      `"./cputil/cputil" utf8 thermal3 scale-to-fit decode application/vnd.star.line ./${filenameGet} ./${filenameOut}`,
+      { env: { COREHOST_TRACE: '1' } }, // Establecer la variable de entorno COREHOST_TRACE
+      (error, stdout, stderr) => {
+        if (error) {
+          console.warn("Error al ejecutar el comando", error);
+          return;
+        }
 
         fs.readFile(filenameOut, "utf8", (err, data) => {
           if (err) {
