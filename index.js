@@ -98,7 +98,7 @@ client.on("connect", function () {
   console.log("Conectado al broker MQTT");
 
   // Suscribirse a un tema
-  const tema = "/Hit/Serveis/Contable/Impresora";
+  let tema = "/Hit/Serveis/Contable/Impresora";
   client.subscribe(tema, function (err) {
     if (err) {
       console.error("Error al suscribirse al tema", err);
@@ -109,10 +109,8 @@ client.on("connect", function () {
 });
 
 client.on("connect", function () {
-  console.log("Conectado al broker MQTT");
-
   // Suscribirse a un tema
-  const tema = "/Hit/Serveis/Impresora";
+  let tema = "/Hit/Serveis/Impresora";
   client.subscribe(tema, function (err) {
     if (err) {
       console.error("Error al suscribirse al tema", err);
@@ -135,9 +133,9 @@ client.on("message", async function (topic, message) {
   try {
     const msgJson = JSON.parse(message);
 
-    console.log('Mensaje en modo JSON test:', msgJson);
+    console.log('Mensaje en modo JSON:', msgJson);
     if (topic == '/Hit/Serveis/Impresora') {
-      if (msgJson.msg) {
+      if (msgJson.msg && msgJson.macAddress) {
         console.log('Guardamos: ', msgJson.macAddress);
         if (!Impresiones[msgJson.macAddress]) {
           Impresiones[msgJson.macAddress] = []; // Si la clave no existe, crea un nuevo vector
@@ -145,18 +143,102 @@ client.on("message", async function (topic, message) {
         Impresiones[msgJson.macAddress].push(msgJson.msg);
         console.log('Texto:', Impresiones[msgJson.macAddress]);
       }
-      Impresiones[msgJson.macAddress].push(msgJson.msg);
-      console.log("Texto:", Impresiones[msgJson.macAddress]);
+      else {
+        console.log("Falta algun parametro");
+      }
+
     }
   } catch (error) {
-    console.log("Mensaje recibido como una cadena: ", message.toString());
-  };
+    //console.log("Mensaje recibido como una cadena: ", message.toString());
+    let BTNrojo = 'Patata roja'
+    let BTNazul = 'patata azul'
+    let msg = '';
+    let macAddress = topic.split('/');
+    if (message.toString() == BTNrojo) {
+      msg = 'mesa';
+      ticketNumberImprimir(macAddress[4], msg, ticketNumberRojo)
+    }
+    else if (message.toString() == BTNazul) {
+      msg = 'pan';
+      ticketNumberImprimir(macAddress[4], msg, ticketNumberAzul)
+    }
+
+  }
 });
+
+const temasSuscritos = {};
+const ticketNumberRojo = {};
+const ticketNumberAzul = {};
+
+function suscribirseAlTema(tema) {
+  if (!temasSuscritos[tema]) {
+    client.subscribe(tema, function (err) {
+      if (err) {
+        console.error("Error al suscribirse al tema", err);
+      } else {
+        console.log("Suscripción exitosa al tema", tema);
+        // Marcar el tema como suscrito
+        temasSuscritos[tema] = true;
+      }
+    });
+  }
+}
+
+function ticketNumberImprimir(macAddress, msg, ticketNumber) {
+  if (!Impresiones[macAddress]) {
+    Impresiones[macAddress] = [];
+  }
+  ticketNumberInicializar(macAddress, ticketNumber);
+  let message = "[bold: on]\[align: center]" + '********************************************' +
+    "\n[magnify: width 2; height 2]Numero: " + ticketNumber[macAddress] + " - " + msg
+    + "\n" + '[magnify: width 1; height 1]********************************************\n';
+
+  console.log(message);
+  Impresiones[macAddress].push(message);
+  ticketNumberIncrementar(macAddress, ticketNumber)
+}
+
+function ticketNumberInicializar(macAddress, ticketNumber) {
+  if (!ticketNumber[macAddress]) {
+    ticketNumber[macAddress] = 1;
+  }
+}
+
+function ticketNumberIncrementar(macAddress, ticketNumber) {
+  ticketNumberInicializar(macAddress, ticketNumber);
+  ticketNumber[macAddress]++;
+}
+
+function reinicializarNumeros() {
+  reinicializarLista(ticketNumberRojo);
+  reinicializarLista(ticketNumberAzul);
+}
+
+function reinicializarLista(lista) {
+  for (let macAddress in lista) {
+    lista[macAddress] = 1;
+  }
+}
+
+function verificarHoraReinicializacion() {
+  const horaReinicializacion = '00:00'; // Hora de reinicialización (en formato de 24 horas)
+  const ahora = new Date();
+  const horaActual = ahora.getHours() + ':' + (ahora.getMinutes() < 10 ? '0' : '') + ahora.getMinutes();
+  
+  // Verificar si la hora actual es igual a la hora de reinicialización
+  if (horaActual === horaReinicializacion) {
+    // Llamar a la función de reinicialización
+    reinicializarNumeros();
+  }
+}
 
 app.post("/mqttPR", async function (req, res) {
   console.log("----------------------post message MQTT----------------------");
   let macAddress = req.body.printerMAC;
   console.log("post message Post ", macAddress);
+  const tema = `/Hit/Serveis/Impresora/${macAddress}`;
+  suscribirseAlTema(tema);
+  verificarHoraReinicializacion()
   let status = req.body["status"];
   sendMQTT(macAddress, status);
   res.writeHead(200, { "Content-Type": "text/plain" });
@@ -175,7 +257,57 @@ app.get("/mqttPR", async function (req, res) {
   console.log("get message Get: ", macAddress);
   res.writeHead(200, { "Content-Type": "text/plain" });
   console.log("Impresiones: ", Impresiones[macAddress]);
-  res.end(Impresiones[macAddress][0]);
+  let filenameGet = "./files/tempFileGet" + Math.floor(Math.random() * 9999) + ".stm";
+  let filenameOut = "./files/tempFileOut" + Math.floor(Math.random() * 9999) + ".bin";
+  //console.log(data.recordset);
+  fs.writeFile(filenameGet, Impresiones[macAddress][0], function (err) {
+    if (err) {
+      console.log("Error al escribir en el archivo", err);
+      return;
+    }
+
+    exec(
+      `"./cputil/cputil" utf8 thermal3 scale-to-fit decode application/vnd.star.line ./${filenameGet} ./${filenameOut}`,
+      { env: { COREHOST_TRACE: '1' } }, // Establecer la variable de entorno COREHOST_TRACE
+      (error, stdout, stderr) => {
+        if (error) {
+          console.warn("Error al ejecutar el comando", error);
+          return;
+        }
+
+        fs.readFile(filenameOut, "utf8", (err, data) => {
+          if (err) {
+            console.error("Error al leer el archivo", err);
+            return;
+          }
+
+          fs.writeFile("./files/Codis.bin", JSON.stringify(data), function (err) {
+            if (err) {
+              console.error("Error al escribir en el archivo Codis.bin", err);
+              return;
+            }
+
+            fs.unlink(filenameGet, function (err) {
+              if (err) {
+                console.error("Error al eliminar el archivo", filenameGet, err);
+                return;
+              }
+            });
+
+            fs.unlink(filenameOut, function (err) {
+              if (err) {
+                console.error("Error al eliminar el archivo", filenameOut, err);
+                return;
+              }
+            });
+
+            res.end(data);
+          });
+        });
+      }
+    );
+  });
+  //res.end(Impresiones[macAddress][0]);
 });
 
 app.delete("/mqttPR", async function (req, res) {
@@ -201,7 +333,7 @@ function sendMQTT(macAddress, status) {
       Impresiones[macAddress] = [];
     }
     botonInicializar(macAddress);
-    console.log(Boton[macAddress]);
+    console.log("Boton: " + Boton[macAddress]);
     Impresiones[macAddress].push(
       "Se ha pulsado el boton " + Boton[macAddress] + " vez"
     );
@@ -225,7 +357,7 @@ function sendMQTT(macAddress, status) {
       time: nowSpain, // Convertir la fecha a un formato ISO string
     });
     //client.publish('/Hit/Serveis/Contable/Impresora', message);
-    console.log("La tercera posición de status no es un 4");
+    console.log("La tercera posición de status no es un 4"); //No se ha pulsado el boton
   }
 }
 
@@ -387,11 +519,10 @@ app.get("/printer", async function (req, res) {
     Sql += `set @Sql=@Sql + 'Select @T ;' `;
     Sql += `EXEC  sp_executesql  @Sql`;
     conexion.recHit("Hit", Sql).then((data) => {
-      let filenameGet =
-        "./files/tempFileGet" + Math.floor(Math.random() * 9999) + ".stm";
-      let filenameOut =
-        "./files/tempFileOut" + Math.floor(Math.random() * 9999) + ".bin";
-      if (data.recordset == undefined) return res.end("Error");
+      let filenameGet = "./files/tempFileGet" + Math.floor(Math.random() * 9999) + ".stm";
+      let filenameOut = "./files/tempFileOut" + Math.floor(Math.random() * 9999) + ".bin";
+      if (data.recordset == undefined)
+        return res.end("Error");
       //console.log(data.recordset);
       let msg = processOldCodes(data.recordset[0][""]);
       fs.writeFile(filenameGet, msg, function (err) {
