@@ -94,6 +94,77 @@ app.get("/test", async function (req, res) {
   console.log("patata");
 });
 
+function escribirEnigmas(nombreArchivoEntrada, nombreArchivoSalida) {
+  try {
+    const contenido = fs.readFileSync(nombreArchivoEntrada, 'utf-8');
+    const lineas = contenido.split('\n');
+
+    let enigmaActual = '';
+    let respuestaActual = '';
+    let enigmasTexto = '';
+
+    for (let i = 0; i < lineas.length; i++) {
+      const linea = lineas[i].trim();
+      // Verificar si es una línea de enigma
+      if (linea.startsWith('"') && linea.endsWith('"')) {
+        // Extraer el enigma y verificar si contiene paréntesis
+        const enigma = linea.substring(1, linea.length - 1).trim();
+        if (enigma.includes('(')) {
+          // Si contiene paréntesis, saltar a la siguiente iteración
+          i+=2
+        } else {
+          enigmaActual = enigma;
+        }
+      }
+      // Verificar si es una línea de respuesta
+      else if (linea.startsWith('Resposta:')) {
+        respuestaActual = linea.substring(10).trim();
+        // Escribir el enigma y la respuesta en el archivo de salida
+        enigmasTexto += `${enigmaActual}\nResposta: ${respuestaActual}\n`;
+      }
+    }
+
+    // Escribir enigmas y respuestas en el archivo de salida
+    fs.writeFileSync(nombreArchivoSalida, enigmasTexto);
+    console.log(`Enigmas y respuestas guardados en ${nombreArchivoSalida}`);
+  } catch (error) {
+    console.error('Error al leer/escribir el archivo:', error);
+  }
+}
+
+// Función para leer el archivo CSV y extraer los enigmas con sus respuestas
+function leerEnigmas(nombreArchivo) {
+  try {
+    const contenido = fs.readFileSync(nombreArchivo, 'utf-8');
+    const lineas = contenido.split('\n');
+    const enigmas = [];
+
+    // Recorrer cada línea del archivo CSV
+    for (let i = 0; i < lineas.length; i++) {
+      const linea = lineas[i].trim();
+      // Separar la línea en enigma y respuesta utilizando "Resposta:" como separador
+      const indiceSeparador = linea.indexOf("Resposta:");
+      if (indiceSeparador !== -1) {
+        const enigma = lineas[i - 1].trim();
+        const respuesta = linea.substring(indiceSeparador + 9).trim();
+        enigmas.push({ enigma, respuesta });
+      }
+    }
+    // Borrar el archivo después de leerlo
+    fs.unlinkSync(nombreArchivo);
+    return enigmas;
+  } catch (error) {
+    console.error('Error al leer el archivo:', error);
+    return [];
+  }
+}
+
+// Función para seleccionar aleatoriamente un enigma y su respuesta
+function seleccionarEnigmaAleatorio(enigmas) {
+  const indiceAleatorio = Math.floor(Math.random() * enigmas.length);
+  return enigmas[indiceAleatorio];
+}
+
 client.on("connect", function () {
   console.log("Conectado al broker MQTT");
 
@@ -149,20 +220,26 @@ client.on("message", async function (topic, message) {
 
     }
   } catch (error) {
-    //console.log("Mensaje recibido como una cadena: ", message.toString());
+    //console.log(topic)
     let BTNrojo = 'Patata roja'
     let BTNazul = 'patata azul'
     let msg = '';
-    let macAddress = topic.split('/');
-    if (message.toString() == BTNrojo) {
-      msg = 'mesa';
-      ticketNumberImprimir(macAddress[4], msg, ticketNumberRojo)
+    let topicSplit = topic.split('/');
+    let tema = "/" + topicSplit[1] + "/" + topicSplit[2] + "/" + topicSplit[3] + "/";
+    //console.log(topicSplit);
+    if (tema == "/Hit/Serveis/Impresora/") {
+      const impresora = topicSplit[4] + "/" + topicSplit[5]
+      tema += impresora;
+      suscribirseAlTema(tema)
+      if (message.toString() == BTNrojo) {
+        msg = 'mesa';
+        ticketNumberImprimir(topicSplit[5], msg, ticketNumberRojo, topicSplit[4])
+      }
+      else if (message.toString() == BTNazul) {
+        msg = 'pan';
+        ticketNumberImprimir(topicSplit[5], msg, ticketNumberAzul, topicSplit[4])
+      }
     }
-    else if (message.toString() == BTNazul) {
-      msg = 'pan';
-      ticketNumberImprimir(macAddress[4], msg, ticketNumberAzul)
-    }
-
   }
 });
 
@@ -184,18 +261,48 @@ function suscribirseAlTema(tema) {
   }
 }
 
-function ticketNumberImprimir(macAddress, msg, ticketNumber) {
+// Nombre del archivo de entrada y de salida
+const nombreArchivoEntrada = 'enigmas.csv';
+const nombreArchivoSalida = 'enigmas_respuestas.csv';
+
+function ticketNumberImprimir(macAddress, msg, ticketNumber, licencia) {
+
+  // Llamada a la función para leer los enigmas del archivo de entrada y escribirlos en el archivo de salida
+  escribirEnigmas(nombreArchivoEntrada, nombreArchivoSalida);
+
+  // Llamada a la función para leer los enigmas del archivo CSV
+  const listaEnigmas = leerEnigmas(nombreArchivoSalida);
+
+  // Seleccionar un enigma aleatorio
+  const enigmaAleatorio = seleccionarEnigmaAleatorio(listaEnigmas);
+
+  /*
+  // Mostrar el enigma y su respuesta aleatoria
+  console.log('[Enigma aleatorio]');
+  console.log('Enigma:', enigmaAleatorio.enigma);
+  console.log('Respuesta:', enigmaAleatorio.respuesta);
+  */
+
   if (!Impresiones[macAddress]) {
     Impresiones[macAddress] = [];
   }
   ticketNumberInicializar(macAddress, ticketNumber);
   let message = "[bold: on]\[align: center]" + '********************************************' +
     "\n[magnify: width 2; height 2]Numero: " + ticketNumber[macAddress] + " - " + msg
-    + "\n" + '[magnify: width 1; height 1]********************************************\n';
+    + "\n" + '[magnify: width 1; height 1]********************************************\n' +
+    "Enigma:" + enigmaAleatorio.enigma + '\n';
 
+  //console.log(macAddress)
   console.log(message);
-  Impresiones[macAddress].push(message);
+  sendMQTTEnigma(macAddress, licencia, enigmaAleatorio.respuesta);
+  
+  //Meter a la cola el mensaje
+  Impresiones[macAddress].push(message); 
   ticketNumberIncrementar(macAddress, ticketNumber)
+}
+
+function sendMQTTEnigma(macAddress, licencia, msg) {
+  client.publish(`/Hit/Serveis/Impresora/${licencia}/${macAddress}`, msg);
 }
 
 function ticketNumberInicializar(macAddress, ticketNumber) {
@@ -224,7 +331,7 @@ function verificarHoraReinicializacion() {
   const horaReinicializacion = '00:00'; // Hora de reinicialización (en formato de 24 horas)
   const ahora = new Date();
   const horaActual = ahora.getHours() + ':' + (ahora.getMinutes() < 10 ? '0' : '') + ahora.getMinutes();
-  
+
   // Verificar si la hora actual es igual a la hora de reinicialización
   if (horaActual === horaReinicializacion) {
     // Llamar a la función de reinicialización
@@ -236,7 +343,8 @@ app.post("/mqttPR", async function (req, res) {
   console.log("----------------------post message MQTT----------------------");
   let macAddress = req.body.printerMAC;
   console.log("post message Post ", macAddress);
-  const tema = `/Hit/Serveis/Impresora/${macAddress}`;
+  //const tema = `/Hit/Serveis/Impresora/${macAddress}`;
+  const tema = `/Hit/Serveis/Impresora/#`;
   suscribirseAlTema(tema);
   verificarHoraReinicializacion()
   let status = req.body["status"];
