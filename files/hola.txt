@@ -1,0 +1,2 @@
+Comando para los permisos de cputil:
+sudo chmod -R 775 cputil/
