@@ -525,7 +525,7 @@ app.post("/printer", async function (req, res) {
     Sql += `	if ( @Empresa = 'Hit')  `;
     Sql += `	begin `;
     Sql += `		delete [Hit].[dbo].[ImpresoraCola] Where Impresora = @ImpresoraNom `;
-    Sql += `		insert into [Hit].[dbo].[ImpresoraCola] (id,impresora,Texte,TmStPeticio) values (newid(),@ImpresoraNom, 'Impressora NO Configurada.[\]Truqueu al 937161010[\]Codi impressora :[\][magnify: width 2; height 2][\]' +CHAR(39)+ @ImpresoraNom + CHAR(39)+ '[\][magnify: width 1; height 1][\]Gràcies :)[\]',getdate()) `;
+    Sql += `		insert into [Hit].[dbo].[ImpresoraCola] (id,impresora,Texte,TmStPeticio) values (newid(),@ImpresoraNom, 'Impressora NO Configurada. Truqueu al [bold:on]937161010 [bold:off] \n Codi impressora: \n [magnify: width 2; height 2] \n ' +@ImpresoraNom+ ' \n [magnify: width 1; height 1] \n Gràcies :) ',getdate()) `;
     Sql += `	end `;
     Sql += `	else `;
     Sql += `	begin `;
