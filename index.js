@@ -327,7 +327,7 @@ function verificarHoraReinicializacion() {
   }
 }
 
-app.post("/mqttPR", async function (req, res) {
+app.post("/mqtt", async function (req, res) {
   console.log("----------------------post message MQTT----------------------");
   let macAddress = req.body.printerMAC;
   console.log("post message Post ", macAddress);
@@ -347,7 +347,7 @@ app.post("/mqttPR", async function (req, res) {
   }
 });
 
-app.get("/mqttPR", async function (req, res) {
+app.get("/mqtt", async function (req, res) {
   console.log("----------------------get message MQTT----------------------");
   let macAddress = req.query.mac;
   console.log("get message Get: ", macAddress);
@@ -405,7 +405,7 @@ app.get("/mqttPR", async function (req, res) {
   //res.end(Impresiones[macAddress][0]);
 });
 
-app.delete("/mqttPR", async function (req, res) {
+app.delete("/mqtt", async function (req, res) {
   console.log(
     "----------------------delete message MQTT----------------------"
   );
