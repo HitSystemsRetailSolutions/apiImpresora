@@ -161,7 +161,7 @@ function seleccionarEnigmaAleatorio(enigmas) {
 
 client.on("connect", function () {
   console.log("Conectado al broker MQTT");
-  let tema = "/Hit/Serveis/Contable/Impresora"; 
+  let tema = "/Hit/Serveis/Contable/Impresora";
   //Suscribirse a un tema
   client.subscribe(tema, function (err) {
     if (err) {
@@ -213,28 +213,39 @@ client.on("message", async function (topic, message) {
     }
   } catch (error) {
     //console.log(topic)
-    let BTNrojo = 'Patata roja'
+    let BTNrojo = 'Patata roja TEST'
     let BTNazul = 'patata azul'
     let msg = '';
     let topicSplit = topic.split('/');
     let tema = "/" + topicSplit[1] + "/" + topicSplit[2] + "/" + topicSplit[3] + "/";
     //console.log(topicSplit);
     if (tema == "/Hit/Serveis/Impresora/") {
-      const impresora = topicSplit[4] + "/" + topicSplit[5]
+      const impresora = topicSplit[4]
       tema += impresora;
       suscribirseAlTema(tema)
-      if (message.toString() == BTNrojo) {
-        msg = 'mesa';
-        ticketNumberImprimir(topicSplit[5], msg, ticketNumberRojo, topicSplit[4])
+      if (message.toString() == BTNrojo && mondongo) {
+        startTimer();
+        msg = 'Botiga';
+        ticketNumberImprimir(topicSplit[4], msg, ticketNumberRojo)
       }
-      else if (message.toString() == BTNazul) {
-        msg = 'pan';
-        ticketNumberImprimir(topicSplit[5], msg, ticketNumberAzul, topicSplit[4])
+      else if (message.toString() == BTNazul && mondongo) {
+        startTimer();
+        msg = 'Taules';
+        ticketNumberImprimir(topicSplit[4], msg, ticketNumberAzul)
       }
     }
   }
 });
 
+const startTimer = () => {
+  console.log("Temporizador iniciado. Esperando 40 segundos...");
+  mondongo = false;
+  setTimeout(() => {
+    mondongo = true
+  }, 40000); // 40,000 milisegundos equivalen a 40 segundos
+};
+
+let mondongo = true;
 const temasSuscritos = {};
 const ticketNumberRojo = {};
 const ticketNumberAzul = {};
@@ -257,7 +268,7 @@ function suscribirseAlTema(tema) {
 const nombreArchivoEntrada = 'enigmas.csv';
 const nombreArchivoSalida = 'enigmas_respuestas.csv';
 
-function ticketNumberImprimir(macAddress, msg, ticketNumber, licencia) {
+function ticketNumberImprimir(macAddress, msg, ticketNumber) {
   escribirEnigmas(nombreArchivoEntrada, nombreArchivoSalida); //Llamada a la función para leer los enigmas del archivo de entrada y escribirlos en el archivo de salida
   const listaEnigmas = leerEnigmas(nombreArchivoSalida); //Llamada a la función para leer los enigmas del archivo CSV
   const enigmaAleatorio = seleccionarEnigmaAleatorio(listaEnigmas); //Seleccionar un enigma aleatorio
@@ -270,22 +281,36 @@ function ticketNumberImprimir(macAddress, msg, ticketNumber, licencia) {
   if (!Impresiones[macAddress]) {
     Impresiones[macAddress] = [];
   }
+  const empresa = 'Cal Forner';
+  const hora = momentTimeZone().tz("Europe/Madrid").format('HH:mm:ss');
+  const dependenta = 'Mondongo'
   ticketNumberInicializar(macAddress, ticketNumber);
-  let message = "[bold: on]\[align: center]" + '********************************************' +
-    "\n[magnify: width 2; height 2]Numero: " + ticketNumber[macAddress] + " - " + msg
-    + "\n" + '[magnify: width 1; height 1]********************************************\n' +
-    "Enigma:" + enigmaAleatorio.enigma + '\n';
+  let messageTicket = "[bold: on]\[align: center]\n" +
+    '================================================\n' +
+    '[magnify: width 3; height 3]\n' +
+    empresa + '\n' +
+    '[magnify: width 1; height 1]\n' +
+    '================================================\n' +
+    '********************************************\n' +
+    '[magnify: width 2; height 2]\n' +
+    'Numero: ' + ticketNumber[macAddress] + " - " + msg + '\n' +
+    '[magnify: width 1; height 1]\n' +
+    '********************************************\n' +
+    'Enigma: ' + enigmaAleatorio.enigma + '\n' +
+    'HORA IMPRESIO: ' + hora + '\n' +
+    'Espera un moment que la ' + dependenta + ' us atengui' + '\n' +
+    'Gracias!! \n';
 
   //console.log(macAddress)
-  console.log(message);
-  sendMQTTEnigma(macAddress, licencia, enigmaAleatorio.respuesta); //Enviar respuesta de enigma por MQTT
-  Impresiones[macAddress].push(message); //Meter a la cola el mensaje
+  console.log(messageTicket);
+  sendMQTTEnigma(macAddress, enigmaAleatorio.respuesta); //Enviar respuesta de enigma por MQTT
+  Impresiones[macAddress].push(messageTicket); //Meter a la cola el mensaje !!!
   ticketNumberIncrementar(macAddress, ticketNumber)
 }
 
 //Función que envia un mensaje MQTT al tema `/Hit/Serveis/Impresora/${licencia}/${macAddress}`
-function sendMQTTEnigma(macAddress, licencia, msg) {
-  client.publish(`/Hit/Serveis/Impresora/${licencia}/${macAddress}`, msg);
+function sendMQTTEnigma(macAddress, msg) {
+  client.publish(`/Hit/Serveis/Impresora/${macAddress}`, msg);
 }
 
 //Función que inicialicia un Vector
@@ -331,8 +356,8 @@ app.post("/mqtt", async function (req, res) {
   console.log("----------------------post message MQTT----------------------");
   let macAddress = req.body.printerMAC;
   console.log("post message Post ", macAddress);
-  //const tema = `/Hit/Serveis/Impresora/${macAddress}`;
-  const tema = `/Hit/Serveis/Impresora/#`;
+  const tema = `/Hit/Serveis/Impresora/${macAddress}`;
+  //const tema = `/Hit/Serveis/Impresora/#`;
   suscribirseAlTema(tema);
   verificarHoraReinicializacion()
   let status = req.body["status"];
