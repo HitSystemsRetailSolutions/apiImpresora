@@ -213,7 +213,7 @@ client.on("message", async function (topic, message) {
     }
   } catch (error) {
     //console.log(topic)
-    let BTNrojo = 'Patata roja TEST'
+    let BTNrojo = 'Patata roja'
     let BTNazul = 'patata azul'
     let msg = '';
     let topicSplit = topic.split('/');
