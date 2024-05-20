@@ -350,7 +350,7 @@ async function ticketNumberImprimir(macAddress, msg, ticketNumber) {
     'Numero: ' + ticketNumber[macAddress] + " - " + msg +  String.fromCharCode(13) + String.fromCharCode(10) +
     '[magnify: width 1; height 1]' + 
     '********************************************' +  String.fromCharCode(13) + String.fromCharCode(10) +
-    'Enigma: ' + String.fromCharCode(13) + String.fromCharCode(10) + enigma +  String.fromCharCode(13) + String.fromCharCode(10) +String.fromCharCode(13) + String.fromCharCode(10) +
+    'Enig Marius: ' + String.fromCharCode(13) + String.fromCharCode(10) + enigma +  String.fromCharCode(13) + String.fromCharCode(10) +String.fromCharCode(13) + String.fromCharCode(10) +
     'hora impresio:' + hora +  String.fromCharCode(13) + String.fromCharCode(10) +
     'Espera un moment que la ' + dependenta + ' us atengui' +  String.fromCharCode(13) + String.fromCharCode(10) +
     'Escaneja el QR per pistes i resposta !!' + String.fromCharCode(13) + String.fromCharCode(10) +
