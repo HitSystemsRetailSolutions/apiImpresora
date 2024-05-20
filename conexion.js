@@ -47,3 +47,39 @@ function Rs(database, consultaSQL) {
     return pool.request().query(consultaSQL);
 }
 module.exports.Rs = Rs;
+
+
+async function runSql(database, consultaSQL) {
+    try {
+        var config = {
+            user: process.env.user,
+            password: process.env.password,
+            server: process.env.server,
+            database: database,
+            requestTimeout: 200000, // for timeout setting
+            options: {
+                encrypt: false,
+                trustServerCertificate: true,
+                enableArithAbort: true
+            }
+        };
+        //console.log('Connecting to database with config:', config);
+
+        // Conectar a la base de datos
+        let pool = await sql.connect(config);
+        //console.log('Connection successful.');
+
+        // Ejecutar la consulta
+        let result = await pool.request().query(consultaSQL);
+        //console.log('Query executed successfully:', consultaSQL);
+
+        return result;
+    } catch (err) {
+        console.error('Error al conectar a la base de datos:', err);
+    } finally {
+        // Cerrar la conexión
+        sql.close().catch(err => console.error('Error al cerrar la conexión:', err));
+    }
+}
+
+module.exports.runSql = runSql;

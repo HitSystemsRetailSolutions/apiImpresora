@@ -10,6 +10,7 @@ const debug = true;
 const mqtt = require("mqtt");
 const momentTimeZone = require("moment-timezone");
 const { rsvgVersion } = require("canvas");
+const { runSql } = require('./conexion');
 const mqttOptions = {
   host: process.env.MQTT_HOST,
   username: process.env.MQTT_USER,
@@ -120,6 +121,7 @@ function escribirEnigmas(nombreArchivoEntrada, nombreArchivoSalida) {
       }
     }
     fs.writeFileSync(nombreArchivoSalida, enigmasTexto); //Escribir enigmas y respuestas en el archivo de salida
+
     console.log(`Enigmas y respuestas guardados en ${nombreArchivoSalida}`);
   } catch (error) {
     console.error('Error al leer/escribir el archivo:', error);
@@ -213,7 +215,7 @@ client.on("message", async function (topic, message) {
     }
   } catch (error) {
     //console.log(topic)
-    let BTNrojo = 'Patata roja'
+    let BTNrojo = 'Patata roja TEST'
     let BTNazul = 'patata azul'
     let msg = '';
     let topicSplit = topic.split('/');
@@ -264,11 +266,44 @@ function suscribirseAlTema(tema) {
   }
 }
 
+const crypto = require('crypto');
+
+function encryptWhatsapp(text) {
+  let encoding = 'base64';
+
+  let key = 'buscoUnTrosDAhirPerEncriptarHITs';
+
+  // Ensure the key length is 32 bytes for aes-256-cbc
+  key = crypto.createHash('sha256').update(key).digest();
+
+  function encrypt(plaintext) {
+    try {
+      const iv = crypto.randomBytes(16);
+      const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+
+      const encrypted = Buffer.concat([
+        cipher.update(plaintext, 'utf-8'),
+        cipher.final(),
+      ]);
+
+      return iv.toString(encoding) + encrypted.toString(encoding);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  return encrypt(text);
+}
+
+function replaceSpacesWithHyphens(text) {
+  return text.replace(/ /g, '-');
+}
+
 //Nombre del archivo de entrada y de salida
 const nombreArchivoEntrada = 'enigmas.csv';
 const nombreArchivoSalida = 'enigmas_respuestas.csv';
 
-function ticketNumberImprimir(macAddress, msg, ticketNumber) {
+async function ticketNumberImprimir(macAddress, msg, ticketNumber) {
   escribirEnigmas(nombreArchivoEntrada, nombreArchivoSalida); //Llamada a la función para leer los enigmas del archivo de entrada y escribirlos en el archivo de salida
   const listaEnigmas = leerEnigmas(nombreArchivoSalida); //Llamada a la función para leer los enigmas del archivo CSV
   const enigmaAleatorio = seleccionarEnigmaAleatorio(listaEnigmas); //Seleccionar un enigma aleatorio
@@ -281,10 +316,28 @@ function ticketNumberImprimir(macAddress, msg, ticketNumber) {
   if (!Impresiones[macAddress]) {
     Impresiones[macAddress] = [];
   }
+
   const empresa = 'Cal Forner';
   const hora = momentTimeZone().tz("Europe/Madrid").format('HH:mm:ss');
-  const dependenta = 'Mondongo'
+  const dependenta = 'Mondongo';
   ticketNumberInicializar(macAddress, ticketNumber);
+  const lic = "0";
+  let enigmaId = "1";
+  const sqlSelect = `SELECT TOP 1 * FROM enigmarius ORDER BY NEWID();`
+  try {
+    const result = await runSql('Hit', sqlSelect);
+    if (result && result.recordset && result.recordset.length > 0) {
+      //console.log('Enigma aleatorio:', result.recordset[0].enigma);
+      enigmaId = result.recordset[0].ID;
+    } else {
+      console.log('No se encontraron enigmas.');
+    }
+  } catch (err) {
+    console.error('Error al obtener el enigma aleatorio:', err);
+  }
+  const msgEncrypt = `Lic:${lic} Torn:${ticketNumber[macAddress]} EnigmaId:${enigmaId}`;
+  const encryptedText = encryptWhatsapp(msgEncrypt);
+
   let messageTicket = "[bold: on]\[align: center]\n" +
     '================================================\n' +
     '[magnify: width 3; height 3]\n' +
@@ -299,10 +352,13 @@ function ticketNumberImprimir(macAddress, msg, ticketNumber) {
     'Enigma: ' + enigmaAleatorio.enigma + '\n' +
     'HORA IMPRESIO: ' + hora + '\n' +
     'Espera un moment que la ' + dependenta + ' us atengui' + '\n' +
-    'Gracias!! \n';
-
-  //console.log(macAddress)
-  console.log(messageTicket);
+    'Gracias!!\n\n' +
+    `[barcode: type qr; data https://api.whatsapp.com/send?phone=34671286345&text=${ Buffer.from(msgEncrypt).toString('base64')}; error-correction L; cell 6; model 2]`;
+  //https://www.youtube.com/watch?v=dQw4w9WgXcQ //Rickroll
+  //https://api.whatsapp.com/send?phone=34671286345&text=${encryptedText} //Cal Forner whatsapp BOT
+  //console.log(macAddress);
+  //console.log(encryptedText.length);
+  //console.log(messageTicket);
   sendMQTTEnigma(macAddress, enigmaAleatorio.respuesta); //Enviar respuesta de enigma por MQTT
   Impresiones[macAddress].push(messageTicket); //Meter a la cola el mensaje !!!
   ticketNumberIncrementar(macAddress, ticketNumber)
@@ -353,9 +409,9 @@ function verificarHoraReinicializacion() {
 }
 
 app.post("/mqtt", async function (req, res) {
-  console.log("----------------------post message MQTT----------------------");
+//  console.log("----------------------post message MQTT----------------------");
   let macAddress = req.body.printerMAC;
-  console.log("post message Post ", macAddress);
+//  console.log("post message Post ", macAddress);
   const tema = `/Hit/Serveis/Impresora/${macAddress}`;
   //const tema = `/Hit/Serveis/Impresora/#`;
   suscribirseAlTema(tema);
@@ -367,7 +423,7 @@ app.post("/mqtt", async function (req, res) {
     console.log("Impresiones: ", Impresiones[macAddress]);
     res.end(JSON.stringify({ jobReady: true, mediaTypes: ["text/plain"] }));
   } else {
-    console.log("Nada a imprimir");
+//    console.log("Nada a imprimir");
     res.end(JSON.stringify({ jobReady: false, mediaTypes: ["text/plain"] }));
   }
 });
@@ -476,7 +532,7 @@ function sendMQTT(macAddress, status) {
       time: nowSpain, // Convertir la fecha a un formato ISO string
     });
     //client.publish('/Hit/Serveis/Contable/Impresora', message);
-    console.log("La tercera posición de status no es un 4"); //No se ha pulsado el boton
+//    console.log("La tercera posición de status no es un 4"); //No se ha pulsado el boton
   }
 }
 
