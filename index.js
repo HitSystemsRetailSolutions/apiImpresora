@@ -319,16 +319,17 @@ async function ticketNumberImprimir(macAddress, msg, ticketNumber) {
 
   const empresa = 'Cal Forner';
   const hora = momentTimeZone().tz("Europe/Madrid").format('HH:mm:ss');
-  const dependenta = 'Mondongo';
+  const dependenta = 'Sonia';
   ticketNumberInicializar(macAddress, ticketNumber);
   const lic = "0";
-  let enigmaId = "1";
+  let enigmaId = "",enigma="";
   const sqlSelect = `SELECT TOP 1 * FROM enigmarius ORDER BY NEWID();`
   try {
     const result = await runSql('Hit', sqlSelect);
     if (result && result.recordset && result.recordset.length > 0) {
       //console.log('Enigma aleatorio:', result.recordset[0].enigma);
       enigmaId = result.recordset[0].ID;
+      enigma = result.recordset[0].enigma;
     } else {
       console.log('No se encontraron enigmas.');
     }
@@ -338,23 +339,24 @@ async function ticketNumberImprimir(macAddress, msg, ticketNumber) {
   const msgEncrypt = `Lic:${lic} Torn:${ticketNumber[macAddress]} EnigmaId:${enigmaId}`;
   const encryptedText = encryptWhatsapp(msgEncrypt);
 
-  let messageTicket = "[bold: on]\[align: center]\n" +
-    '================================================\n' +
-    '[magnify: width 3; height 3]\n' +
-    empresa + '\n' +
-    '[magnify: width 1; height 1]\n' +
-    '================================================\n' +
-    '********************************************\n' +
-    '[magnify: width 2; height 2]\n' +
-    'Numero: ' + ticketNumber[macAddress] + " - " + msg + '\n' +
-    '[magnify: width 1; height 1]\n' +
-    '********************************************\n' +
-    'Enigma: ' + enigmaAleatorio.enigma + '\n' +
-    'HORA IMPRESIO: ' + hora + '\n' +
-    'Espera un moment que la ' + dependenta + ' us atengui' + '\n' +
-    'Gracias!!\n\n' +
+  let messageTicket = "[bold: on]\[align: center]" + String.fromCharCode(13) + String.fromCharCode(10) +
+    '================================================' + String.fromCharCode(13) + String.fromCharCode(10) +
+    '[magnify: width 3; height 3]' +
+    empresa +  String.fromCharCode(13) + String.fromCharCode(10) +
+    '[magnify: width 1; height 1]' +
+    '================================================' +  String.fromCharCode(13) + String.fromCharCode(10) +
+    '********************************************' + String.fromCharCode(13) + String.fromCharCode(10) +
+    '[magnify: width 2; height 2]' +
+    'Numero: ' + ticketNumber[macAddress] + " - " + msg +  String.fromCharCode(13) + String.fromCharCode(10) +
+    '[magnify: width 1; height 1]' + 
+    '********************************************' +  String.fromCharCode(13) + String.fromCharCode(10) +
+    'Enigma: ' + String.fromCharCode(13) + String.fromCharCode(10) + enigma +  String.fromCharCode(13) + String.fromCharCode(10) +String.fromCharCode(13) + String.fromCharCode(10) +
+    'hora impresio:' + hora +  String.fromCharCode(13) + String.fromCharCode(10) +
+    'Espera un moment que la ' + dependenta + ' us atengui' +  String.fromCharCode(13) + String.fromCharCode(10) +
+    'Escaneja el QR per pistes i resposta !!' + String.fromCharCode(13) + String.fromCharCode(10) +
     `[barcode: type qr; data https://api.whatsapp.com/send?phone=34671286345&text=${ Buffer.from(msgEncrypt).toString('base64')}; error-correction L; cell 6; model 2]`;
-  //https://www.youtube.com/watch?v=dQw4w9WgXcQ //Rickroll
+
+ //https://www.youtube.com/watch?v=dQw4w9WgXcQ //Rickroll
   //https://api.whatsapp.com/send?phone=34671286345&text=${encryptedText} //Cal Forner whatsapp BOT
   //console.log(macAddress);
   //console.log(encryptedText.length);
@@ -655,7 +657,6 @@ app.post("/printer", async function (req, res) {
           res.end(
             JSON.stringify({ jobReady: true, mediaTypes: ["text/plain"] })
           );
-          //console.log("mondongo");
         }
         else {
           res.end(
