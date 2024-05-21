@@ -147,7 +147,7 @@ function leerEnigmas(nombreArchivo) {
       }
     }
 
-    fs.unlinkSync(nombreArchivo); //Borrar el archivo después de leerlo
+    //fs.unlinkSync(nombreArchivo); //Borrar el archivo después de leerlo
     return enigmas;
   } catch (error) {
     console.error('Error al leer el archivo:', error);
@@ -304,9 +304,9 @@ const nombreArchivoEntrada = 'enigmas.csv';
 const nombreArchivoSalida = 'enigmas_respuestas.csv';
 
 async function ticketNumberImprimir(macAddress, msg, ticketNumber) {
-  escribirEnigmas(nombreArchivoEntrada, nombreArchivoSalida); //Llamada a la función para leer los enigmas del archivo de entrada y escribirlos en el archivo de salida
-  const listaEnigmas = leerEnigmas(nombreArchivoSalida); //Llamada a la función para leer los enigmas del archivo CSV
-  const enigmaAleatorio = seleccionarEnigmaAleatorio(listaEnigmas); //Seleccionar un enigma aleatorio
+  //escribirEnigmas(nombreArchivoEntrada, nombreArchivoSalida); //Llamada a la función para leer los enigmas del archivo de entrada y escribirlos en el archivo de salida
+  //const listaEnigmas = leerEnigmas(nombreArchivoSalida); //Llamada a la función para leer los enigmas del archivo CSV
+  //const enigmaAleatorio = seleccionarEnigmaAleatorio(listaEnigmas); //Seleccionar un enigma aleatorio
   /*
   //Mostrar el enigma y su respuesta aleatoria
   console.log('[Enigma aleatorio]');
@@ -322,7 +322,7 @@ async function ticketNumberImprimir(macAddress, msg, ticketNumber) {
   const dependenta = 'Sonia';
   ticketNumberInicializar(macAddress, ticketNumber);
   const lic = "0";
-  let enigmaId = "",enigma="";
+  let enigmaId = "", enigma = "", enigmaRespuesta = "";
   const sqlSelect = `SELECT TOP 1 * FROM enigmarius ORDER BY NEWID();`
   try {
     const result = await runSql('Hit', sqlSelect);
@@ -330,6 +330,7 @@ async function ticketNumberImprimir(macAddress, msg, ticketNumber) {
       //console.log('Enigma aleatorio:', result.recordset[0].enigma);
       enigmaId = result.recordset[0].ID;
       enigma = result.recordset[0].enigma;
+      enigmaRespuesta = result.recordset[0].respuesta;
     } else {
       console.log('No se encontraron enigmas.');
     }
@@ -342,26 +343,26 @@ async function ticketNumberImprimir(macAddress, msg, ticketNumber) {
   let messageTicket = "[bold: on]\[align: center]" + String.fromCharCode(13) + String.fromCharCode(10) +
     '================================================' + String.fromCharCode(13) + String.fromCharCode(10) +
     '[magnify: width 3; height 3]' +
-    empresa +  String.fromCharCode(13) + String.fromCharCode(10) +
+    empresa + String.fromCharCode(13) + String.fromCharCode(10) +
     '[magnify: width 1; height 1]' +
-    '================================================' +  String.fromCharCode(13) + String.fromCharCode(10) +
+    '================================================' + String.fromCharCode(13) + String.fromCharCode(10) +
     '********************************************' + String.fromCharCode(13) + String.fromCharCode(10) +
     '[magnify: width 2; height 2]' +
-    'Numero: ' + ticketNumber[macAddress] + " - " + msg +  String.fromCharCode(13) + String.fromCharCode(10) +
-    '[magnify: width 1; height 1]' + 
-    '********************************************' +  String.fromCharCode(13) + String.fromCharCode(10) +
-    'Enig Marius: ' + String.fromCharCode(13) + String.fromCharCode(10) + enigma +  String.fromCharCode(13) + String.fromCharCode(10) +String.fromCharCode(13) + String.fromCharCode(10) +
-    'hora impresio:' + hora +  String.fromCharCode(13) + String.fromCharCode(10) +
-    'Espera un moment que la ' + dependenta + ' us atengui' +  String.fromCharCode(13) + String.fromCharCode(10) +
+    'Numero: ' + ticketNumber[macAddress] + " - " + msg + String.fromCharCode(13) + String.fromCharCode(10) +
+    '[magnify: width 1; height 1]' +
+    '********************************************' + String.fromCharCode(13) + String.fromCharCode(10) +
+    'Enig Marius: ' + String.fromCharCode(13) + String.fromCharCode(10) + enigma + String.fromCharCode(13) + String.fromCharCode(10) + String.fromCharCode(13) + String.fromCharCode(10) +
+    'hora impresio:' + hora + String.fromCharCode(13) + String.fromCharCode(10) +
+    'Espera un moment que la ' + dependenta + ' us atengui' + String.fromCharCode(13) + String.fromCharCode(10) +
     'Escaneja el QR per pistes i resposta !!' + String.fromCharCode(13) + String.fromCharCode(10) +
-    `[barcode: type qr; data https://api.whatsapp.com/send?phone=34671286345&text=${ Buffer.from(msgEncrypt).toString('base64')}; error-correction L; cell 6; model 2]`;
+    `[barcode: type qr; data https://api.whatsapp.com/send?phone=34671286345&text=${Buffer.from(msgEncrypt).toString('base64')}; error-correction L; cell 6; model 2]`;
 
- //https://www.youtube.com/watch?v=dQw4w9WgXcQ //Rickroll
+  //https://www.youtube.com/watch?v=dQw4w9WgXcQ //Rickroll
   //https://api.whatsapp.com/send?phone=34671286345&text=${encryptedText} //Cal Forner whatsapp BOT
   //console.log(macAddress);
   //console.log(encryptedText.length);
   //console.log(messageTicket);
-  sendMQTTEnigma(macAddress, enigmaAleatorio.respuesta); //Enviar respuesta de enigma por MQTT
+  sendMQTTEnigma(macAddress, enigmaRespuesta); //Enviar respuesta de enigma por MQTT
   Impresiones[macAddress].push(messageTicket); //Meter a la cola el mensaje !!!
   ticketNumberIncrementar(macAddress, ticketNumber)
 }
@@ -403,17 +404,17 @@ function verificarHoraReinicializacion() {
   const ahora = new Date();
   const horaActual = ahora.getHours() + ':' + (ahora.getMinutes() < 10 ? '0' : '') + ahora.getMinutes();
 
-  // Verificar si la hora actual es igual a la hora de reinicialización
+  //Verificar si la hora actual es igual a la hora de reinicialización
   if (horaActual === horaReinicializacion) {
-    // Llamar a la función de reinicialización
+    //Llamar a la función de reinicialización
     reinicializarNumeros();
   }
 }
 
 app.post("/mqtt", async function (req, res) {
-//  console.log("----------------------post message MQTT----------------------");
+  //console.log("----------------------post message MQTT----------------------");
   let macAddress = req.body.printerMAC;
-//  console.log("post message Post ", macAddress);
+  //console.log("post message Post ", macAddress);
   const tema = `/Hit/Serveis/Impresora/${macAddress}`;
   //const tema = `/Hit/Serveis/Impresora/#`;
   suscribirseAlTema(tema);
@@ -425,7 +426,7 @@ app.post("/mqtt", async function (req, res) {
     console.log("Impresiones: ", Impresiones[macAddress]);
     res.end(JSON.stringify({ jobReady: true, mediaTypes: ["text/plain"] }));
   } else {
-//    console.log("Nada a imprimir");
+    //    console.log("Nada a imprimir");
     res.end(JSON.stringify({ jobReady: false, mediaTypes: ["text/plain"] }));
   }
 });
@@ -534,7 +535,7 @@ function sendMQTT(macAddress, status) {
       time: nowSpain, // Convertir la fecha a un formato ISO string
     });
     //client.publish('/Hit/Serveis/Contable/Impresora', message);
-//    console.log("La tercera posición de status no es un 4"); //No se ha pulsado el boton
+    //    console.log("La tercera posición de status no es un 4"); //No se ha pulsado el boton
   }
 }
 
