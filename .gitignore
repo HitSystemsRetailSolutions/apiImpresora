@@ -3,3 +3,4 @@ node_modules
 *.bin
 *.stm
 .env
+cputil

@@ -10,6 +10,7 @@ const debug = true;
 const mqtt = require("mqtt");
 const momentTimeZone = require("moment-timezone");
 const { rsvgVersion } = require("canvas");
+const { runSql } = require('./conexion');
 const mqttOptions = {
   host: process.env.MQTT_HOST,
   username: process.env.MQTT_USER,
@@ -120,6 +121,7 @@ function escribirEnigmas(nombreArchivoEntrada, nombreArchivoSalida) {
       }
     }
     fs.writeFileSync(nombreArchivoSalida, enigmasTexto); //Escribir enigmas y respuestas en el archivo de salida
+
     console.log(`Enigmas y respuestas guardados en ${nombreArchivoSalida}`);
   } catch (error) {
     console.error('Error al leer/escribir el archivo:', error);
@@ -145,7 +147,7 @@ function leerEnigmas(nombreArchivo) {
       }
     }
 
-    fs.unlinkSync(nombreArchivo); //Borrar el archivo después de leerlo
+    //fs.unlinkSync(nombreArchivo); //Borrar el archivo después de leerlo
     return enigmas;
   } catch (error) {
     console.error('Error al leer el archivo:', error);
@@ -161,7 +163,7 @@ function seleccionarEnigmaAleatorio(enigmas) {
 
 client.on("connect", function () {
   console.log("Conectado al broker MQTT");
-  let tema = "/Hit/Serveis/Contable/Impresora"; 
+  let tema = "/Hit/Serveis/Contable/Impresora";
   //Suscribirse a un tema
   client.subscribe(tema, function (err) {
     if (err) {
@@ -213,28 +215,39 @@ client.on("message", async function (topic, message) {
     }
   } catch (error) {
     //console.log(topic)
-    let BTNrojo = 'Patata roja'
+    let BTNrojo = 'Patata roja TEST'
     let BTNazul = 'patata azul'
     let msg = '';
     let topicSplit = topic.split('/');
     let tema = "/" + topicSplit[1] + "/" + topicSplit[2] + "/" + topicSplit[3] + "/";
     //console.log(topicSplit);
     if (tema == "/Hit/Serveis/Impresora/") {
-      const impresora = topicSplit[4] + "/" + topicSplit[5]
+      const impresora = topicSplit[4]
       tema += impresora;
       suscribirseAlTema(tema)
-      if (message.toString() == BTNrojo) {
-        msg = 'mesa';
-        ticketNumberImprimir(topicSplit[5], msg, ticketNumberRojo, topicSplit[4])
+      if (message.toString() == BTNrojo && mondongo) {
+        startTimer();
+        msg = 'Botiga';
+        ticketNumberImprimir(topicSplit[4], msg, ticketNumberRojo)
       }
-      else if (message.toString() == BTNazul) {
-        msg = 'pan';
-        ticketNumberImprimir(topicSplit[5], msg, ticketNumberAzul, topicSplit[4])
+      else if (message.toString() == BTNazul && mondongo) {
+        startTimer();
+        msg = 'Taules';
+        ticketNumberImprimir(topicSplit[4], msg, ticketNumberAzul)
       }
     }
   }
 });
 
+const startTimer = () => {
+  console.log("Temporizador iniciado. Esperando 40 segundos...");
+  mondongo = false;
+  setTimeout(() => {
+    mondongo = true
+  }, 40000); // 40,000 milisegundos equivalen a 40 segundos
+};
+
+let mondongo = true;
 const temasSuscritos = {};
 const ticketNumberRojo = {};
 const ticketNumberAzul = {};
@@ -253,14 +266,47 @@ function suscribirseAlTema(tema) {
   }
 }
 
+const crypto = require('crypto');
+
+function encryptWhatsapp(text) {
+  let encoding = 'base64';
+
+  let key = 'buscoUnTrosDAhirPerEncriptarHITs';
+
+  // Ensure the key length is 32 bytes for aes-256-cbc
+  key = crypto.createHash('sha256').update(key).digest();
+
+  function encrypt(plaintext) {
+    try {
+      const iv = crypto.randomBytes(16);
+      const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+
+      const encrypted = Buffer.concat([
+        cipher.update(plaintext, 'utf-8'),
+        cipher.final(),
+      ]);
+
+      return iv.toString(encoding) + encrypted.toString(encoding);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  return encrypt(text);
+}
+
+function replaceSpacesWithHyphens(text) {
+  return text.replace(/ /g, '-');
+}
+
 //Nombre del archivo de entrada y de salida
 const nombreArchivoEntrada = 'enigmas.csv';
 const nombreArchivoSalida = 'enigmas_respuestas.csv';
 
-function ticketNumberImprimir(macAddress, msg, ticketNumber, licencia) {
-  escribirEnigmas(nombreArchivoEntrada, nombreArchivoSalida); //Llamada a la función para leer los enigmas del archivo de entrada y escribirlos en el archivo de salida
-  const listaEnigmas = leerEnigmas(nombreArchivoSalida); //Llamada a la función para leer los enigmas del archivo CSV
-  const enigmaAleatorio = seleccionarEnigmaAleatorio(listaEnigmas); //Seleccionar un enigma aleatorio
+async function ticketNumberImprimir(macAddress, msg, ticketNumber) {
+  //escribirEnigmas(nombreArchivoEntrada, nombreArchivoSalida); //Llamada a la función para leer los enigmas del archivo de entrada y escribirlos en el archivo de salida
+  //const listaEnigmas = leerEnigmas(nombreArchivoSalida); //Llamada a la función para leer los enigmas del archivo CSV
+  //const enigmaAleatorio = seleccionarEnigmaAleatorio(listaEnigmas); //Seleccionar un enigma aleatorio
   /*
   //Mostrar el enigma y su respuesta aleatoria
   console.log('[Enigma aleatorio]');
@@ -270,22 +316,60 @@ function ticketNumberImprimir(macAddress, msg, ticketNumber, licencia) {
   if (!Impresiones[macAddress]) {
     Impresiones[macAddress] = [];
   }
-  ticketNumberInicializar(macAddress, ticketNumber);
-  let message = "[bold: on]\[align: center]" + '********************************************' +
-    "\n[magnify: width 2; height 2]Numero: " + ticketNumber[macAddress] + " - " + msg
-    + "\n" + '[magnify: width 1; height 1]********************************************\n' +
-    "Enigma:" + enigmaAleatorio.enigma + '\n';
 
-  //console.log(macAddress)
-  console.log(message);
-  sendMQTTEnigma(macAddress, licencia, enigmaAleatorio.respuesta); //Enviar respuesta de enigma por MQTT
-  Impresiones[macAddress].push(message); //Meter a la cola el mensaje
+  const empresa = 'Cal Forner';
+  const hora = momentTimeZone().tz("Europe/Madrid").format('HH:mm:ss');
+  const dependenta = 'Sonia';
+  ticketNumberInicializar(macAddress, ticketNumber);
+  const lic = "0";
+  let enigmaId = "", enigma = "", enigmaRespuesta = "";
+  const sqlSelect = `SELECT TOP 1 * FROM enigmarius ORDER BY NEWID();`
+  try {
+    const result = await runSql('Hit', sqlSelect);
+    if (result && result.recordset && result.recordset.length > 0) {
+      //console.log('Enigma aleatorio:', result.recordset[0].enigma);
+      enigmaId = result.recordset[0].ID;
+      enigma = result.recordset[0].enigma;
+      enigmaRespuesta = result.recordset[0].respuesta;
+    } else {
+      console.log('No se encontraron enigmas.');
+    }
+  } catch (err) {
+    console.error('Error al obtener el enigma aleatorio:', err);
+  }
+  const msgEncrypt = `Lic:${lic} Torn:${ticketNumber[macAddress]} EnigmaId:${enigmaId}`;
+  const encryptedText = encryptWhatsapp(msgEncrypt);
+
+  let messageTicket = "[bold: on]\[align: center]" + String.fromCharCode(13) + String.fromCharCode(10) +
+    '================================================' + String.fromCharCode(13) + String.fromCharCode(10) +
+    '[magnify: width 3; height 3]' +
+    empresa + String.fromCharCode(13) + String.fromCharCode(10) +
+    '[magnify: width 1; height 1]' +
+    '================================================' + String.fromCharCode(13) + String.fromCharCode(10) +
+    '********************************************' + String.fromCharCode(13) + String.fromCharCode(10) +
+    '[magnify: width 2; height 2]' +
+    'Numero: ' + ticketNumber[macAddress] + " - " + msg + String.fromCharCode(13) + String.fromCharCode(10) +
+    '[magnify: width 1; height 1]' +
+    '********************************************' + String.fromCharCode(13) + String.fromCharCode(10) +
+    'Enig Marius: ' + String.fromCharCode(13) + String.fromCharCode(10) + enigma + String.fromCharCode(13) + String.fromCharCode(10) + String.fromCharCode(13) + String.fromCharCode(10) +
+    'hora impresio:' + hora + String.fromCharCode(13) + String.fromCharCode(10) +
+    'Espera un moment que la ' + dependenta + ' us atengui' + String.fromCharCode(13) + String.fromCharCode(10) +
+    'Escaneja el QR per pistes i resposta !!' + String.fromCharCode(13) + String.fromCharCode(10) +
+    `[barcode: type qr; data https://api.whatsapp.com/send?phone=34671286345&text=${Buffer.from(msgEncrypt).toString('base64')}; error-correction L; cell 6; model 2]`;
+
+  //https://www.youtube.com/watch?v=dQw4w9WgXcQ //Rickroll
+  //https://api.whatsapp.com/send?phone=34671286345&text=${encryptedText} //Cal Forner whatsapp BOT
+  //console.log(macAddress);
+  //console.log(encryptedText.length);
+  //console.log(messageTicket);
+  sendMQTTEnigma(macAddress, enigmaRespuesta); //Enviar respuesta de enigma por MQTT
+  Impresiones[macAddress].push(messageTicket); //Meter a la cola el mensaje !!!
   ticketNumberIncrementar(macAddress, ticketNumber)
 }
 
 //Función que envia un mensaje MQTT al tema `/Hit/Serveis/Impresora/${licencia}/${macAddress}`
-function sendMQTTEnigma(macAddress, licencia, msg) {
-  client.publish(`/Hit/Serveis/Impresora/${licencia}/${macAddress}`, msg);
+function sendMQTTEnigma(macAddress, msg) {
+  client.publish(`/Hit/Serveis/Impresora/${macAddress}`, msg);
 }
 
 //Función que inicialicia un Vector
@@ -320,19 +404,19 @@ function verificarHoraReinicializacion() {
   const ahora = new Date();
   const horaActual = ahora.getHours() + ':' + (ahora.getMinutes() < 10 ? '0' : '') + ahora.getMinutes();
 
-  // Verificar si la hora actual es igual a la hora de reinicialización
+  //Verificar si la hora actual es igual a la hora de reinicialización
   if (horaActual === horaReinicializacion) {
-    // Llamar a la función de reinicialización
+    //Llamar a la función de reinicialización
     reinicializarNumeros();
   }
 }
 
 app.post("/mqtt", async function (req, res) {
-  console.log("----------------------post message MQTT----------------------");
+  //console.log("----------------------post message MQTT----------------------");
   let macAddress = req.body.printerMAC;
-  console.log("post message Post ", macAddress);
-  //const tema = `/Hit/Serveis/Impresora/${macAddress}`;
-  const tema = `/Hit/Serveis/Impresora/#`;
+  //console.log("post message Post ", macAddress);
+  const tema = `/Hit/Serveis/Impresora/${macAddress}`;
+  //const tema = `/Hit/Serveis/Impresora/#`;
   suscribirseAlTema(tema);
   verificarHoraReinicializacion()
   let status = req.body["status"];
@@ -342,7 +426,7 @@ app.post("/mqtt", async function (req, res) {
     console.log("Impresiones: ", Impresiones[macAddress]);
     res.end(JSON.stringify({ jobReady: true, mediaTypes: ["text/plain"] }));
   } else {
-    console.log("Nada a imprimir");
+    //    console.log("Nada a imprimir");
     res.end(JSON.stringify({ jobReady: false, mediaTypes: ["text/plain"] }));
   }
 });
@@ -451,7 +535,7 @@ function sendMQTT(macAddress, status) {
       time: nowSpain, // Convertir la fecha a un formato ISO string
     });
     //client.publish('/Hit/Serveis/Contable/Impresora', message);
-    console.log("La tercera posición de status no es un 4"); //No se ha pulsado el boton
+    //    console.log("La tercera posición de status no es un 4"); //No se ha pulsado el boton
   }
 }
 
@@ -574,7 +658,6 @@ app.post("/printer", async function (req, res) {
           res.end(
             JSON.stringify({ jobReady: true, mediaTypes: ["text/plain"] })
           );
-          //console.log("mondongo");
         }
         else {
           res.end(
