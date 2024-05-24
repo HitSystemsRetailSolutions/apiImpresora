@@ -322,7 +322,7 @@ async function ticketNumberImprimir(macAddress, msg, ticketNumber) {
   const dependenta = 'Sonia';
   ticketNumberInicializar(macAddress, ticketNumber);
   const lic = "0";
-  let enigmaId = "", enigma = "", enigmaRespuesta = "";
+  let enigmaId = 1, enigma = "", enigmaRespuesta = "";
   const sqlSelect = `SELECT TOP 1 * FROM enigmarius ORDER BY NEWID();`
   try {
     const result = await runSql('Hit', sqlSelect);
