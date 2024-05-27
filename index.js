@@ -322,7 +322,7 @@ async function ticketNumberImprimir(macAddress, msg, ticketNumber) {
   const dependenta = 'Sonia';
   ticketNumberInicializar(macAddress, ticketNumber);
   const lic = "0";
-  let enigmaId = "", enigma = "", enigmaRespuesta = "";
+  let enigmaId = 1, enigma = "", enigmaRespuesta = "";
   const sqlSelect = `SELECT TOP 1 * FROM enigmarius where not enigma='' ORDER BY NEWID();`
   try {
     const result = await runSql('Hit', sqlSelect);
@@ -351,8 +351,8 @@ async function ticketNumberImprimir(macAddress, msg, ticketNumber) {
     'Numero: ' + ticketNumber[macAddress] + " - " + msg + String.fromCharCode(13) + String.fromCharCode(10) +
     '[magnify: width 1; height 1]' +
     '********************************************' + String.fromCharCode(13) + String.fromCharCode(10) +
-    'Enig Marius: ' + String.fromCharCode(13) + String.fromCharCode(10) + enigma + String.fromCharCode(13) + String.fromCharCode(10) + String.fromCharCode(13) + String.fromCharCode(10) +
-    'hora impresio:' + hora + String.fromCharCode(13) + String.fromCharCode(10) +
+    'Enigmàrius: ' + String.fromCharCode(13) + String.fromCharCode(10) + enigma + String.fromCharCode(13) + String.fromCharCode(10) + String.fromCharCode(13) + String.fromCharCode(10) +
+    'Hora impressió:' + hora + String.fromCharCode(13) + String.fromCharCode(10) +
     'Espera un moment que la ' + dependenta + ' us atengui' + String.fromCharCode(13) + String.fromCharCode(10) +
     'Escaneja el QR per pistes i resposta !!' + String.fromCharCode(13) + String.fromCharCode(10) +
     `[barcode: type qr; data https://api.whatsapp.com/send?phone=34671286345&text=${Buffer.from(msgEncrypt).toString('base64')}; error-correction L; cell 6; model 2]`;
