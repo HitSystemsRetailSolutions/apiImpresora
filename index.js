@@ -705,7 +705,7 @@ app.get("/printer", async function (req, res) {
       fs.writeFile(filenameGet, msg, function (err) {
         if (err) console.log("1", err);
         else {
-          if (msg.includes("BOTÓ")) {
+          if (msg.includes("BOTÓ")|| msg.includes("comandero")) {
             exec(
               `"./cputil/cputil" utf8 thermal3 buzzer-start 2 scale-to-fit decode application/vnd.star.line ./${filenameGet} ./${filenameOut}`,
               (error, stdout, stderr) => {
