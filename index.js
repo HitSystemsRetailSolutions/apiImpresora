@@ -323,7 +323,7 @@ async function ticketNumberImprimir(macAddress, msg, ticketNumber) {
   ticketNumberInicializar(macAddress, ticketNumber);
   const lic = "0";
   let enigmaId = 1, enigma = "", enigmaRespuesta = "";
-  const sqlSelect = `SELECT TOP 1 * FROM enigmarius ORDER BY NEWID();`
+  const sqlSelect = `SELECT TOP 1 * FROM enigmarius where not enigma='' ORDER BY NEWID();`
   try {
     const result = await runSql('Hit', sqlSelect);
     if (result && result.recordset && result.recordset.length > 0) {
