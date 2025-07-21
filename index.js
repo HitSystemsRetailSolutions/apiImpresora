@@ -637,7 +637,7 @@ app.post("/printer", async function (req, res) {
     Sql += `		set @Sql = @Sql + 'else '		 `;
     Sql += `		set @Sql = @Sql + '	begin ' `;
     Sql += `		set @Sql = @Sql + '		Insert Into [' +@Empresa + '].[dbo].FeinesAFer (id, Tipus,Ciclica,Param1) Values (newid(), ' +CHAR(39)+ 'ImpresoraIpReposicion' +CHAR(39)+ ',0,' +CHAR(39)+ @ImpresoraNom + CHAR(39)+')' `;
-    Sql += `		set @Sql = @Sql + '		insert into [' +@Empresa + '].[dbo].[ImpresoraCola] (id,impresora,Texte,TmStPeticio) values (newid(),' +CHAR(39)+ @ImpresoraNom + CHAR(39)+ ', ' +CHAR(39)+ '[magnify: width 2; height 2]Petició de reposició feta... [magnify: width 1; height 1]' +CHAR(39)+ ',getdate())' `;
+    Sql += `		set @Sql = @Sql + '		insert into [' +@Empresa + '].[dbo].[ImpresoraCola] (id,impresora,Texte,TmStPeticio) values (newid(),' +CHAR(39)+ @ImpresoraNom + CHAR(39)+ ', ' +CHAR(39)+ '[magnify: width 2; height 2]Petició de reposició feta... [magnify: width 1; height 1]  \n \n  Nom impressora: [bold:on] ' +@ImpresoraNom+ ' [bold:off]'+CHAR(39)+ ',getdate())' `;
     Sql += `		set @Sql = @Sql + '	end ' `;
     Sql += ` `;
     Sql += `		EXEC  sp_executesql  @Sql `;
@@ -705,7 +705,7 @@ app.get("/printer", async function (req, res) {
       fs.writeFile(filenameGet, msg, function (err) {
         if (err) console.log("1", err);
         else {
-          if (msg.includes("BOTÓ")|| msg.includes("comandero")) {
+          if (msg.includes("BOTÓ") || msg.includes("comandero")) {
             exec(
               `"./cputil/cputil" utf8 thermal3 buzzer-start 2 scale-to-fit decode application/vnd.star.line ./${filenameGet} ./${filenameOut}`,
               (error, stdout, stderr) => {
