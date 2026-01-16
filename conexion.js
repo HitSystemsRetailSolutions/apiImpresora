@@ -1,85 +1,38 @@
-var sql = require("mssql");
+const sql = require("mssql");
 
-async function recHit(database, consultaSQL) {
-    var config =
-    {
+/**
+ * Executes a SQL query on the specified database.
+ * @param {string} database - The database name.
+ * @param {string} consultaSQL - The SQL query to execute.
+ * @returns {Promise<sql.IResult<any>>} The query result.
+ */
+async function runSql(database, consultaSQL) {
+    const config = {
         user: process.env.user,
         password: process.env.password,
         server: process.env.server,
         database: database,
-        requestTimeout: 200000, // for timeout setting
+        requestTimeout: 200000,
         options: {
             encrypt: false,
             trustServerCertificate: true,
             enableArithAbort: true
         }
     };
-    var devolver = new Promise((dev, rej) => {
-        new sql.ConnectionPool(config).connect().then(pool => {
-            return pool.request().query(consultaSQL);
-        }).then(result => {
-            dev(result);
-            sql.close();
-        }).catch(err => {
-            console.log(err);
-            console.log("SQL: ", consultaSQL)
-            sql.close();
-        });
-    });
-    return devolver;
-}
 
-module.exports.recHit = recHit;
-
-
-function Rs(database, consultaSQL) {
-    var config =
-    {
-        user: process.env.user,
-        password: process.env.password,
-        server: process.env.server,
-        database: database
-    };
-
-    var pool = new sql.ConnectionPool(config).connect();
-    var result = pool.query(consultaSQL);
-
-    return pool.request().query(consultaSQL);
-}
-module.exports.Rs = Rs;
-
-
-async function runSql(database, consultaSQL) {
     try {
-        var config = {
-            user: process.env.user,
-            password: process.env.password,
-            server: process.env.server,
-            database: database,
-            requestTimeout: 200000, // for timeout setting
-            options: {
-                encrypt: false,
-                trustServerCertificate: true,
-                enableArithAbort: true
-            }
-        };
-        //console.log('Connecting to database with config:', config);
-
-        // Conectar a la base de datos
+        // sql.connect(config) creates a pool if it doesn't exist for this config
         let pool = await sql.connect(config);
-        //console.log('Connection successful.');
-
-        // Ejecutar la consulta
         let result = await pool.request().query(consultaSQL);
-        //console.log('Query executed successfully:', consultaSQL);
-
         return result;
     } catch (err) {
-        console.error('Error al conectar a la base de datos:', err);
-    } finally {
-        // Cerrar la conexión
-        sql.close().catch(err => console.error('Error al cerrar la conexión:', err));
+        console.error(`[SQL Error] Database: ${database}`);
+        console.error(`[SQL Error] Query: ${consultaSQL}`);
+        console.error(`[SQL Error] Detail:`, err);
+        throw err; // Propagate error so the caller can handle it
     }
 }
 
-module.exports.runSql = runSql;
+module.exports = {
+    runSql
+};
