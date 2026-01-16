@@ -1,85 +1,66 @@
-var sql = require("mssql");
+const sql = require("mssql");
 
-async function recHit(database, consultaSQL) {
-    var config =
-    {
-        user: process.env.user,
-        password: process.env.password,
-        server: process.env.server,
-        database: database,
-        requestTimeout: 200000, // for timeout setting
-        options: {
-            encrypt: false,
-            trustServerCertificate: true,
-            enableArithAbort: true
-        }
-    };
-    var devolver = new Promise((dev, rej) => {
-        new sql.ConnectionPool(config).connect().then(pool => {
-            return pool.request().query(consultaSQL);
-        }).then(result => {
-            dev(result);
-            sql.close();
-        }).catch(err => {
-            console.log(err);
-            console.log("SQL: ", consultaSQL)
-            sql.close();
-        });
-    });
-    return devolver;
-}
+// Cache to store connection pools for different databases
+const pools = new Map();
 
-module.exports.recHit = recHit;
+/**
+ * Executes a SQL query on the specified database.
+ * @param {string} database - The database name.
+ * @param {string} consultaSQL - The SQL query to execute.
+ * @param {Object} [params] - Key-value pairs for SQL input parameters.
+ * @returns {Promise<sql.IResult<any>>} The query result.
+ */
+async function runSql(database, consultaSQL, params = {}) {
+    // If the database is missing, it will use the default from process.env if available, 
+    // but here we expect it to be explicit.
+    const dbKey = database || "default";
 
-
-function Rs(database, consultaSQL) {
-    var config =
-    {
-        user: process.env.user,
-        password: process.env.password,
-        server: process.env.server,
-        database: database
-    };
-
-    var pool = new sql.ConnectionPool(config).connect();
-    var result = pool.query(consultaSQL);
-
-    return pool.request().query(consultaSQL);
-}
-module.exports.Rs = Rs;
-
-
-async function runSql(database, consultaSQL) {
-    try {
-        var config = {
+    if (!pools.has(dbKey)) {
+        const config = {
             user: process.env.user,
             password: process.env.password,
             server: process.env.server,
             database: database,
-            requestTimeout: 200000, // for timeout setting
+            requestTimeout: 200000,
             options: {
                 encrypt: false,
                 trustServerCertificate: true,
                 enableArithAbort: true
+            },
+            pool: {
+                max: 10,
+                min: 0,
+                idleTimeoutMillis: 30000
             }
         };
-        //console.log('Connecting to database with config:', config);
+        const pool = new sql.ConnectionPool(config);
+        pools.set(dbKey, pool.connect());
+    }
 
-        // Conectar a la base de datos
-        let pool = await sql.connect(config);
-        //console.log('Connection successful.');
+    try {
+        // Wait for the pool to be connected
+        const pool = await pools.get(dbKey);
+        const request = pool.request();
 
-        // Ejecutar la consulta
-        let result = await pool.request().query(consultaSQL);
-        //console.log('Query executed successfully:', consultaSQL);
-
-        return result;
+        // Add parameters to the request
+        for (const [key, value] of Object.entries(params)) {
+            request.input(key, value);
+        }
+        return await request.query(consultaSQL);
     } catch (err) {
-        console.error('Error al conectar a la base de datos:', err);
-    } finally {
-        // Cerrar la conexión
-        sql.close().catch(err => console.error('Error al cerrar la conexión:', err));
+        // If connection fails, remove from cache so it can retry
+        pools.delete(dbKey);
+
+        console.error(`[SQL Error] Database: ${database}`);
+        console.error(`[SQL Error] Query: ${consultaSQL}`);
+        if (Object.keys(params).length > 0) {
+            console.error(`[SQL Error] Params:`, params);
+        }
+        console.error(`[SQL Error] Detail:`, err);
+        throw err;
     }
 }
 
-module.exports.runSql = runSql;
+module.exports = {
+    runSql
+};
