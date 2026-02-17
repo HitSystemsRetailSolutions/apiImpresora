@@ -110,7 +110,7 @@ app.post("/printer", async (req, res) => {
           BEGIN
             DELETE [Hit].[dbo].[ImpresoraCola] WHERE Impresora = @ImpresoraNom;
             INSERT INTO [Hit].[dbo].[ImpresoraCola] (id, impresora, Texte, TmStPeticio)
-            VALUES (NEWID(), @ImpresoraNom, 'Impressora NO Configurada. Truqueu al [bold:on]937161010 [bold:off] \n Codi impressora: \n [magnify: width 2; height 2] \n ' + @ImpresoraNom + ' \n [magnify: width 1; height 1] \n Gràcies :) ', GETDATE());
+            VALUES (NEWID(), @ImpresoraNom, 'Impresora NO Configurada. Llamad al [bold:on]937161010 [bold:off] \n Código impresora: \n [magnify: width 2; height 2] \n ' + @ImpresoraNom + ' \n [magnify: width 1; height 1] \n Gracias :) ', GETDATE());
           END
           ELSE
           BEGIN
@@ -128,18 +128,18 @@ app.post("/printer", async (req, res) => {
               BEGIN
                 DELETE [' + @Empresa + '].[dbo].[ImpresoraCola] WHERE impresora = @P1;
                 DELETE [' + @Empresa + '].[dbo].FeinesAFer WHERE (tipus = ''ImpresoraIpReposicion'' OR tipus = ''ImpresoraPremutBoto2'') AND param1 = @P1;
-                INSERT INTO [' + @Empresa + '].[dbo].[ImpresoraCola] (id, impresora, Texte, TmStPeticio) VALUES (NEWID(), @P1, ''[magnify: width 2; height 2]Impressió CANCEL·LADA!!! [magnify: width 1; height 1] \n \n Nom impressora: [bold:on] '' + @P1 + '' [bold:off]'', GETDATE());
+                INSERT INTO [' + @Empresa + '].[dbo].[ImpresoraCola] (id, impresora, Texte, TmStPeticio) VALUES (NEWID(), @P1, ''[magnify: width 2; height 2]Impresión CANCELADA!!! [magnify: width 1; height 1] \n \n Nombre impresora: [bold:on] '' + @P1 + '' [bold:off]'', GETDATE());
               END
               ELSE IF (@click > 0)
               BEGIN
                 DELETE [' + @Empresa + '].[dbo].FeinesAFer WHERE Tipus = ''ImpresoraIpReposicion'' AND Param1 = @P1;
                 INSERT INTO [' + @Empresa + '].[dbo].FeinesAFer (id, Tipus, Ciclica, Param1) VALUES (NEWID(), ''ImpresoraPremutBoto2'', 0, @P1);
-                INSERT INTO [' + @Empresa + '].[dbo].[ImpresoraCola] (id, impresora, Texte, TmStPeticio) VALUES (NEWID(), @P1, ''[magnify: width 2; height 2]Segon llistat demanat. Si tornes a prémer el botó es cancel·larà la impressió. [magnify: width 1; height 1] \n \n Nom impressora: [bold:on] '' + @P1 + '' [bold:off]'', GETDATE());
+                INSERT INTO [' + @Empresa + '].[dbo].[ImpresoraCola] (id, impresora, Texte, TmStPeticio) VALUES (NEWID(), @P1, ''[magnify: width 2; height 2]Segundo listado solicitado. Si vuelves a pulsar el botón se cancelará la impresión. [magnify: width 1; height 1] \n \n Nombre impresora: [bold:on] '' + @P1 + '' [bold:off]'', GETDATE());
               END
               ELSE
               BEGIN
                 INSERT INTO [' + @Empresa + '].[dbo].FeinesAFer (id, Tipus, Ciclica, Param1) VALUES (NEWID(), ''ImpresoraIpReposicion'', 0, @P1);
-                INSERT INTO [' + @Empresa + '].[dbo].[ImpresoraCola] (id, impresora, Texte, TmStPeticio) VALUES (NEWID(), @P1, ''[magnify: width 2; height 2]Petició de reposició feta... [magnify: width 1; height 1] \n \n Nom impressora: [bold:on] '' + @P1 + '' [bold:off]'', GETDATE());
+                INSERT INTO [' + @Empresa + '].[dbo].[ImpresoraCola] (id, impresora, Texte, TmStPeticio) VALUES (NEWID(), @P1, ''[magnify: width 2; height 2]Petición de reposición realizada... [magnify: width 1; height 1] \n \n Nombre impresora: [bold:on] '' + @P1 + '' [bold:off]'', GETDATE());
               END';
             EXEC sp_executesql @Sql, N'@P1 nvarchar(30)', @P1 = @ImpresoraNom;
           END
