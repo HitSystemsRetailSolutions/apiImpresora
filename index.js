@@ -65,7 +65,6 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
 
 app.post("/printer", async (req, res) => {
-  process.stdout.write(".");
   try {
     const macAddress = req.body.printerMAC;
     const status = req.body["status"];
@@ -75,13 +74,13 @@ app.post("/printer", async (req, res) => {
     if (!procesedMacs.includes(macAddress)) {
       try {
         const data = await conexion.runSql("Hit",
-          `SELECT * FROM ImpresorasIp WHERE Mac = @mac;`,
+          `SELECT TOP 1 Mac FROM ImpresorasIp WITH (NOLOCK) WHERE Mac = @mac;`,
           { mac: macAddress }
         );
-        if (data?.rowsAffected[0] === 0) {
-          const nomMac = macAddress?.split(":").join("");
+        if (data?.recordset?.length === 0) {
+          const nomMac = macAddress.split(":").join("");
           const insertMac = `INSERT INTO ImpresorasIp (Id, TmSt, Mac, Empresa, Nom, estado, ping) 
-                             VALUES (NEWID(), NULL, @mac, 'Hit', @nom, 0, NULL)`;
+                             VALUES (NEWID(), GETDATE(), @mac, 'Hit', @nom, 0, NULL)`;
           await conexion.runSql("Hit", insertMac, { mac: macAddress, nom: nomMac });
         }
         procesedMacs.push(macAddress);
@@ -91,21 +90,18 @@ app.post("/printer", async (req, res) => {
     }
 
     const botoApretat = status?.substring(5, 6) === "4" ? 1 : 0;
-    const Sql = `
-      DECLARE @MyMac nvarchar(20) = @mac;
-      DECLARE @ImpresoraNom nvarchar(30);
-      DECLARE @Empresa nvarchar(20);
-      DECLARE @Sql nvarchar(max);
-      DECLARE @BotoApretat BIT = @isPressed;
-
-      SELECT @ImpresoraNom = nom, @Empresa = empresa FROM ImpresorasIp WHERE Mac = @MyMac;
-      
-      IF (@ImpresoraNom IS NOT NULL)
-      BEGIN
-        UPDATE ImpresorasIp SET TmSt = GETDATE() WHERE Mac = @MyMac;
-
-        IF (@BotoApretat = 1)
+    let Sql = "";
+    if (botoApretat) {
+      Sql = `
+        DECLARE @MyMac nvarchar(20) = @mac;
+        DECLARE @ImpresoraNom nvarchar(30);
+        DECLARE @Empresa nvarchar(20);
+        DECLARE @Sql nvarchar(max);
+        SELECT @ImpresoraNom = nom, @Empresa = empresa FROM ImpresorasIp WITH (NOLOCK) WHERE Mac = @MyMac;
+        
+        IF (@ImpresoraNom IS NOT NULL)
         BEGIN
+          UPDATE ImpresorasIp SET TmSt = GETDATE() WHERE Mac = @MyMac;
           IF (@Empresa = 'Hit')
           BEGIN
             DELETE [Hit].[dbo].[ImpresoraCola] WHERE Impresora = @ImpresoraNom;
@@ -118,9 +114,9 @@ app.post("/printer", async (req, res) => {
               DECLARE @click numeric, @click2 numeric, @imp numeric;
               SELECT @click = SUM(Alb), @click2 = SUM(Prod), @imp = SUM(Imp) FROM (
                 SELECT COUNT(*) Alb, 0 Prod, 0 Imp FROM [' + @Empresa + '].[dbo].FeinesAFer WHERE tipus = ''ImpresoraIpReposicion'' AND param1 = @P1
-                UNION
+                UNION ALL
                 SELECT 0 Alb, COUNT(*) Prod, 0 Imp FROM [' + @Empresa + '].[dbo].FeinesAFer WHERE tipus = ''ImpresoraPremutBoto2'' AND param1 = @P1
-                UNION
+                UNION ALL
                 SELECT 0 Alb, 0 Prod, COUNT(*) Imp FROM [' + @Empresa + '].[dbo].ImpresoraCola WHERE Impresora = @P1
               ) s;
               
@@ -143,19 +139,34 @@ app.post("/printer", async (req, res) => {
               END';
             EXEC sp_executesql @Sql, N'@P1 nvarchar(30)', @P1 = @ImpresoraNom;
           END
+          SET @Sql = 'SELECT COUNT(*) Q FROM [' + @Empresa + '].[dbo].[ImpresoraCola] WITH (NOLOCK) WHERE Impresora = @P1';
+          EXEC sp_executesql @Sql, N'@P1 nvarchar(30)', @P1 = @ImpresoraNom;
+        END ELSE SELECT 0 as Q;`;
+    } else {
+      Sql = `
+        DECLARE @ImpresoraNom nvarchar(30);
+        DECLARE @Empresa nvarchar(20);
+        SELECT @ImpresoraNom = nom, @Empresa = empresa FROM ImpresorasIp WITH (NOLOCK) WHERE Mac = @mac;
+        
+        IF (@ImpresoraNom IS NOT NULL)
+        BEGIN
+          UPDATE ImpresorasIp SET TmSt = GETDATE() WHERE Mac = @mac;
+          
+          DECLARE @CountSql nvarchar(max) = 'SELECT COUNT(*) Q FROM [' + @Empresa + '].[dbo].[ImpresoraCola] WITH (NOLOCK) WHERE Impresora = @P1';
+          EXEC sp_executesql @CountSql, N'@P1 nvarchar(30)', @P1 = @ImpresoraNom;
         END
+        ELSE SELECT 0 as Q;`;
+    }
 
-        SET @Sql = 'SELECT COUNT(*) Q FROM [' + @Empresa + '].[dbo].[ImpresoraCola] WHERE Impresora = @P1';
-        EXEC sp_executesql @Sql, N'@P1 nvarchar(30)', @P1 = @ImpresoraNom;
-      END
-      ELSE
-      BEGIN
-        SELECT 0 as Q;
-      END
-    `;
+    const data = await conexion.runSql("Hit", Sql, { mac: macAddress });
 
-    const data = await conexion.runSql("Hit", Sql, { mac: macAddress, isPressed: botoApretat });
-    res.status(200).json({ jobReady: data.recordset[0]?.["Q"] > 0, mediaTypes: ["text/plain"] });
+    const isJobReady = !!(data.recordset && data.recordset[0]?.["Q"] > 0);
+    res.setHeader('Connection', 'close');
+    res.setHeader('Content-Type', 'application/json');
+    return res.status(200).json({
+      jobReady: isJobReady,
+      mediaTypes: ["text/plain"]
+    });
 
   } catch (error) {
     console.error("Error in POST /printer:", error);
@@ -175,26 +186,29 @@ app.get("/printer", async (req, res) => {
       DECLARE @Empresa nvarchar(20);
       DECLARE @Sql nvarchar(max);
 
-      SELECT @ImpresoraNom = nom, @Empresa = empresa FROM ImpresorasIp WHERE Mac = @MyMac;
+      SELECT @ImpresoraNom = nom, @Empresa = empresa FROM ImpresorasIp WITH (NOLOCK) WHERE Mac = @MyMac;
 
       IF (@ImpresoraNom IS NOT NULL)
       BEGIN
         SET @Sql = '
-          DECLARE @I varchar(max);
+          DECLARE @I uniqueidentifier;
           DECLARE @T varchar(max);
           SELECT TOP 1 @T = texte, @I = id FROM [' + @Empresa + '].[dbo].[ImpresoraCola] WHERE Impresora = @P1 ORDER BY tmstpeticio;
-          DELETE FROM [' + @Empresa + '].[dbo].[ImpresoraCola] WHERE id = @I;
-          SELECT @T';
+          IF @I IS NOT NULL
+          BEGIN
+            DELETE FROM [' + @Empresa + '].[dbo].[ImpresoraCola] WHERE id = @I;
+            SELECT @T AS Texte;
+          END';
         EXEC sp_executesql @Sql, N'@P1 nvarchar(30)', @P1 = @ImpresoraNom;
       END
     `;
 
     const data = await conexion.runSql("Hit", Sql, { mac: macAddress });
-    if (!data.recordset || data.recordset.length === 0 || data.recordset[0][""] === undefined) {
+    if (!data.recordset || data.recordset.length === 0 || data.recordset[0]["Texte"] === undefined) {
       return res.status(200).end("");
     }
 
-    const msg = processOldCodes(data.recordset[0][""] || "");
+    const msg = processOldCodes(data.recordset[0]["Texte"] || "");
     const randomId = Math.floor(Math.random() * 9999);
 
     // Resolve absolute paths for files
@@ -222,9 +236,8 @@ app.get("/printer", async (req, res) => {
 
     try {
       if (cputilCmd) {
-        await execPromise(cputilCmd);
+        await execPromise(cputilCmd, { timeout: 10000 }); // 10 seconds timeout
         const binData = await fs.readFile(filenameOut, "utf8");
-        await fs.writeFile(path.resolve(__dirname, "files", "Codis.bin"), JSON.stringify(binData)).catch(() => { });
         res.status(200).set("Content-Type", "text/plain").send(binData);
       } else {
         res.status(200).set("Content-Type", "text/plain").send("OK_DRY_RUN_" + randomId);
